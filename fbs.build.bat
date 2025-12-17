@@ -5,15 +5,21 @@ REM  Author: Tuomo Kanniainen
 REM  License: MIT (see LICENSE file)
 REM ==================================================================
 
+
 SETLOCAL EnableDelayedExpansion
 ECHO [SCRIPT] Running from: %~f0
+
+REM === Ensure we're in script dir ===
+CD /D "%~dp0" || CALL :LOG ERROR "Failed to change to script directory"
+
+REM ===== Create a timestamp =====
 CALL :MAKETIMESTAMP timestamp
 
 REM IMPORTANT: DO NOT EDIT THIS (log_file_name), or it can lead to stale/lost data when cleaning up project
 SET "log_file_name=forgescript_build_%timestamp%.log"
 
 REM ===== CUSTOM (Mid precedence: can be overwritten by cmd args) =====
-SET "custom_build_type="
+SET "custom_build_type=asd"
 SET "custom_src_dir="
 SET "custom_build_dir="
 SET "custom_output_name="
@@ -26,7 +32,8 @@ SET "default_src_dir=%~dp0"
 SET "default_build_dir=%~dp0build\"
 SET "default_output_name=program.exe"
 SET "default_log_dir=%~dp0log\"
-SET "default_include_dirs=%~dp0include\ %~dp0include2\"
+SET "default_include_dirs=%~dp0include w spaces\;%~dp0include2\"
+
 
 REM ===== CMD (High precedence: cannot be overwritten) =====
 SET "cmd_build_type="
@@ -49,35 +56,31 @@ IF NOT ERRORLEVEL 1 (
     IF /I "%arg%"=="--debug"        SET "cmd_build_type=debug"     & SHIFT & GOTO :PARSE_ARGS
     IF /I "%arg%"=="--release"      SET "cmd_build_type=release"   & SHIFT & GOTO :PARSE_ARGS
     IF /I "%arg%"=="--run"          SET "run_after_build=1"        & SHIFT & GOTO :PARSE_ARGS
+    CALL :LOG WARN "Unknown flag: %arg%" & SHIFT & GOTO :PARSE_ARGS
 )
 
-:: Handle key=value pairs
-ECHO "%arg%" | FINDSTR /C:"=" >NUL
+::Handle key:value
+ECHO "%arg%" | FINDSTR /C:":" >NUL
 IF ERRORLEVEL 1 (
-    CALL :LOG WARN "Unknown argument: %arg%"
-    SHIFT
-    GOTO :PARSE_ARGS
+    CALL :LOG WARN "Unknown argument: %arg% (use key:value)" & SHIFT & GOTO :PARSE_ARGS
 )
 
-REM Split on first '='
-FOR /F "tokens=1,* delims==" %%A IN ("%arg%") DO (
-    SET "key=%%A"
-    SET "val=%%B"
+:: Split on first ':' 
+FOR /F "tokens=1,* delims=:" %%A IN ("%arg%") DO (
+    SET "cmd_arg_key=%%A"
+    SET "cmd_arg_val=%%B"
 )
 
-REM Remove surrounding quotes from value if present
-IF DEFINED val (
-    SET "val=!val:=!"
-    IF "!val:~0,1!"=="""" SET "val=!val:~1!"
-    IF "!val:~-1!"=="""" SET "val=!val:~0,-1!"
-)
+:: Remove surrounding quotes from key and value if present
+FOR %%K IN ("!cmd_arg_key!") DO SET "cmd_arg_key=%%~K"
+FOR %%V IN ("!cmd_arg_val!") DO SET "cmd_arg_val=%%~V"
 
-REM Map key to custom variable
-IF /I "!key!"=="src_dir"        SET "cmd_src_dir=!val!"
-IF /I "!key!"=="build_dir"      SET "cmd_build_dir=!val!"
-IF /I "!key!"=="output_name"    SET "cmd_output_name=!val!"
-IF /I "!key!"=="log_dir"        SET "cmd_log_dir=!val!"
-IF /I "!key!"=="include_dirs"   SET "cmd_include_dirs=!val!"
+::Map key to custom variable
+IF /I "!cmd_arg_key!"=="src_dir"        SET "cmd_src_dir=!cmd_arg_val!"
+IF /I "!cmd_arg_key!"=="build_dir"      SET "cmd_build_dir=!cmd_arg_val!"
+IF /I "!cmd_arg_key!"=="output_name"    SET "cmd_output_name=!cmd_arg_val!"
+IF /I "!cmd_arg_key!"=="log_dir"        SET "cmd_log_dir=!cmd_arg_val!"
+IF /I "!cmd_arg_key!"=="include_dirs"   SET "cmd_include_dirs=!cmd_arg_val!"
 SHIFT
 GOTO :PARSE_ARGS
 :ARGS_DONE
@@ -96,9 +99,12 @@ REM === Initialize log ===
     ECHO ========================================
     ECHO  BUILD STARTED: %DATE% %TIME%
     ECHO  Script: %~f0
-    ECHO  Build Type: %build_type%
-    ECHO  Source: "%src_dir%"
-    ECHO  Output: "%build_dir%"
+    ECHO  Build: %build_type%
+    ECHO  src_dir: %src_dir%
+    ECHO  build_dir: %build_dir%
+    ECHO  output_name: %output_name%
+    ECHO  log_dir: %log_dir%
+    ECHO  include_dirs: %include_dirs%
     ECHO ========================================
     ECHO.
 ) > "%log_dir%%log_file_name%"
@@ -107,7 +113,6 @@ GOTO :MAIN
 
 REM === Initialize project directory structure based on the DEFAULT/CUSTOM/CMD ARGS values ===
 :INIT_PROJECT
-:: TODO: Should we add quotes to paths if path is not quoted?
 IF NOT EXIST "%build_dir%" MKDIR "%build_dir%" 2>NUL
 IF NOT EXIST "%src_dir%" MKDIR "%src_dir%" 2>NUL
 IF NOT EXIST "%log_dir%" MKDIR "%log_dir%" 2>NUL
@@ -128,14 +133,13 @@ GOTO :EOF
 REM === Clean the log directory ===
 :CLEAN_LOGS
 IF NOT EXIST "%log_dir%" GOTO :EOF
-
 CALL :IS_SUBDIR "%log_dir%" "%~dp0" is_safe
 IF /I "%is_safe%"=="YES" (
     CALL :LOG INFO "Cleaning project-local logs: %log_dir%"
-    DEL /Q /F "%log_dir%build_*.log" 2>NUL
+    DEL /Q /F "%log_dir%forgescript_build_*.log" 2>NUL
 ) ELSE IF DEFINED force_clean (
     CALL :LOG WARN "FORCE: Cleaning external log dir: %log_dir%"
-    DEL /Q /F "%log_dir%build_*.log" 2>NUL
+    DEL /Q /F "%log_dir%forgescript_build_*.log" 2>NUL
 ) ELSE (
     CALL :LOG WARN "log_dir outside project. Use --clean --force to clean."
 )
@@ -154,9 +158,6 @@ IF /I "%level%"=="ERROR" (
 EXIT /B 0
 
 :MAIN
-REM === Ensure we're in script dir ===
-CD /D "%~dp0" || CALL :LOG ERROR "Failed to change to script directory"
-
 CALL :LOG INFO "Building %output_name%"
 
 REM === Collect source files ===
@@ -180,17 +181,31 @@ IF %file_count% EQU 0 (
 
 CALL :LOG INFO "Found %file_count% source file(s)"
 
-REM Collect include dirs
-SET "include_dirs_with_compiler_arg_prefixes="
-FOR %%i IN (%include_dirs%) DO (
-    SET "trimmed_path=%%i"
+REM Collect the include dirs
+SET "list=!include_dirs!"
+:INCLUDE_DIR_LOOP
+IF NOT DEFINED list GOTO :INCLUDE_DIR_LOOP_DONE
+:: Split off the first path (%%A) and keep the rest (%%B)
+FOR /F "tokens=1,* delims=;" %%A IN ("!list!") DO (
+    :: include_dirs should contain paths that are not quoted
+    set "clean_path=%%A"
 
-    :: Trim trailing backslash, because they can cause a bug in the compiler -I argument
-    IF "!trimmed_path:~-1!" == "\" SET "trimmed_path=!trimmed_path:~0,-1!"
-    
-    SET "quoted_path="!trimmed_path!""
+    :: Remove trailing backslash if present
+    IF "!clean_path:~-1!"=="\" SET "clean_path=!clean_path:~0,-1!"
+
+    :: Quote the path properly
+    SET "quoted_path="!clean_path!""
+
+    ECHO include_dir after trim and quotation: !quoted_path!
+
+    :: Append to the final argument list
     SET "include_dirs_with_compiler_arg_prefixes=!include_dirs_with_compiler_arg_prefixes! -I!quoted_path!"
+
+    :: Prepare the remaining part for next iteration
+    SET "list=%%B"
 )
+GOTO :INCLUDE_DIR_LOOP
+:INCLUDE_DIR_LOOP_DONE
 
 REM Remove leading space
 IF DEFINED include_dirs_with_compiler_arg_prefixes SET "include_dirs_with_compiler_arg_prefixes=!include_dirs_with_compiler_arg_prefixes:~1!"
@@ -257,7 +272,7 @@ SET "child=%~f1"
 SET "parent=%~f2"
 SET "result=NO"
 
-REM Normalize paths (remove trailing slashes)
+:: Normalize paths (remove trailing slashes)
 IF "%child:~-1%"=="\" SET "child=%child:~0,-1%"
 IF "%parent:~-1%"=="\" SET "parent=%parent:~0,-1%"
 
