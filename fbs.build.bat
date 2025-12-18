@@ -47,16 +47,22 @@ REM === Parse command-line arguments ===
 :PARSE_ARGS
 IF "%~1"=="" GOTO :ARGS_DONE
 SET "arg=%~1"
-
+REM TODO FIX: CLEANING FLAG BUGGED --> BUILD DIR DOES NOT EXIST YET
 :: Handle flags
-ECHO "%arg%" | FINDSTR /I "^--debug$ ^--release$ ^--init-project$ ^--clean$ ^--run$" >NUL
+IF /I "%arg%"=="--debug"         SET "cmd_build_type=debug"       & SHIFT & GOTO :PARSE_ARGS
+IF /I "%arg%"=="--release"       SET "cmd_build_type=release"     & SHIFT & GOTO :PARSE_ARGS
+IF /I "%arg%"=="--run"           SET "run_after_build=1"          & SHIFT & GOTO :PARSE_ARGS
+IF /I "%arg%"=="--init-project"  CALL :INIT_PROJECT                & EXIT /B 0
+IF /I "%arg%"=="--clean-logs"    CALL :CLEAN_LOGS                  & EXIT /B 0
+IF /I "%arg%"=="--clean-build"   CALL :CLEAN_BUILD                 & EXIT /B 0
+IF /I "%arg%"=="--clean"         CALL :CLEAN_BUILD & CALL :CLEAN_LOGS & EXIT /B 0
+
+:: Unknown flag
+ECHO "%arg%" | FINDSTR /B /I /C:"--" >NUL
 IF NOT ERRORLEVEL 1 (
-    IF /I "%arg%"=="--init-project" CALL :INIT_PROJECT & EXIT /B 0
-    IF /I "%arg%"=="--clean"        CALL :CLEAN_BUILD  & EXIT /B 0
-    IF /I "%arg%"=="--debug"        SET "cmd_build_type=debug"     & SHIFT & GOTO :PARSE_ARGS
-    IF /I "%arg%"=="--release"      SET "cmd_build_type=release"   & SHIFT & GOTO :PARSE_ARGS
-    IF /I "%arg%"=="--run"          SET "run_after_build=1"        & SHIFT & GOTO :PARSE_ARGS
-    CALL :LOG WARN "Unknown flag: %arg%" & SHIFT & GOTO :PARSE_ARGS
+    CALL :LOG WARN "Unknown flag: %arg%"
+    SHIFT
+    GOTO :PARSE_ARGS
 )
 
 ::Handle key:value
@@ -126,7 +132,23 @@ GOTO :EOF
 REM === Clean the build directory ===
 :CLEAN_BUILD
 CALL :LOG INFO "Cleaning build directory: %build_dir%..."
-IF EXIST "%build_dir%" (RMDIR /S /Q "%build_dir%" & MKDIR "%build_dir")
+IF NOT EXIST "%build_dir%" GOTO :EOF
+CALL :IS_SUBDIR "%build_dir%" "%~dp0" is_safe
+IF /I "%is_safe%"=="YES" (
+    CALL :LOG INFO "Cleaning project-local build files: %build_dir%"
+    DEL /Q /F "%build_dir%%output_name%" 2>NUL
+    DEL /Q /F "%build_dir%%output_name%.exe" 2>NUL
+    DEL /Q /F "%build_dir%%output_name%.ilk" 2>NUL
+    DEL /Q /F "%build_dir%%output_name%.pdb" 2>NUL
+) ELSE IF DEFINED force_clean (
+    CALL :LOG WARN "FORCE: Cleaning external build dir: %build_dir%"
+    DEL /Q /F "%build_dir%%output_name%" 2>NUL
+    DEL /Q /F "%build_dir%%output_name%.exe" 2>NUL
+    DEL /Q /F "%build_dir%%output_name%.ilk" 2>NUL
+    DEL /Q /F "%build_dir%%output_name%.pdb" 2>NUL
+) ELSE (
+    CALL :LOG WARN "build_dir outside project. Use --clean --force to clean."
+)
 CALL :LOG INFO "Done."
 GOTO :EOF
 
@@ -143,6 +165,7 @@ IF /I "%is_safe%"=="YES" (
 ) ELSE (
     CALL :LOG WARN "log_dir outside project. Use --clean --force to clean."
 )
+CALL :LOG INFO "Done."
 GOTO :EOF
 
 REM === Logging Function ===
