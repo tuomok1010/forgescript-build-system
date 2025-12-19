@@ -5,35 +5,37 @@ REM  Author: Tuomo Kanniainen
 REM  License: MIT (see LICENSE file)
 REM ==================================================================
 
-
+TODO: REMOVE ) BUG AND TEST CONFIG FILE SETTINGS
 SETLOCAL EnableDelayedExpansion
 ECHO [SCRIPT] Running from: %~f0
 
 REM === Ensure we're in script dir ===
-CD /D "%~dp0" || CALL :LOG ERROR "Failed to change to script directory"
+CD /D "%~dp0" || ECHO "Failed to change to script directory"
 
 REM ===== Create a timestamp =====
 CALL :MAKETIMESTAMP timestamp
 
-REM IMPORTANT: DO NOT EDIT THIS (log_file_name), or it can lead to stale/lost data when cleaning up project
+REM IMPORTANT: DO NOT EDIT THESE or it can lead to stale/lost data when cleaning up project
 SET "log_file_name=forgescript_build_%timestamp%.log"
+SET "forgescript_settings_path=%~dp0forgescript\"
+SET "forgescript_last_build_info_file_name=fbs_last.info"
+SET "forgescript_build_conf_file_name=fbs_build_settings.conf"
 
-REM ===== CUSTOM (Mid precedence: can be overwritten by cmd args) =====
-SET "custom_build_type=asd"
-SET "custom_src_dir="
-SET "custom_build_dir="
-SET "custom_output_name="
-SET "custom_log_dir="
-SET "custom_include_dirs="
+REM ===== CONFIG FILE (Mid precedence: can be overwritten by cmd args) =====
+SET "conf_build_type="
+SET "conf_src_dir="
+SET "conf_build_dir="
+SET "conf_output_name="
+SET "conf_log_dir="
+SET "conf_include_dirs="
 
-REM ===== DEFAULT (Low precedence: can be overwritten by CUSTOM or cmd args) =====
+REM ===== DEFAULT (Low  precedence: can be overwritten by CUSTOM, config file, or cmd args) =====
 SET "default_build_type=debug"
 SET "default_src_dir=%~dp0"
 SET "default_build_dir=%~dp0build\"
 SET "default_output_name=program.exe"
-SET "default_log_dir=%~dp0log\"
+SET "default_log_dir=%forgescript_settings_path%log\"
 SET "default_include_dirs=%~dp0include w spaces\;%~dp0include2\"
-
 
 REM ===== CMD (High precedence: cannot be overwritten) =====
 SET "cmd_build_type="
@@ -42,6 +44,9 @@ SET "cmd_build_dir="
 SET "cmd_output_name="
 SET "cmd_log_dir="
 SET "cmd_include_dirs="
+
+REM === Parse config file ===
+CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%forgescript_settings_path%%forgescript_build_conf_file_name%"
 
 REM === Parse command-line arguments ===
 :PARSE_ARGS
@@ -52,7 +57,6 @@ REM TODO FIX: CLEANING FLAG BUGGED --> BUILD DIR DOES NOT EXIST YET
 IF /I "%arg%"=="--debug"         SET "cmd_build_type=debug"       & SHIFT & GOTO :PARSE_ARGS
 IF /I "%arg%"=="--release"       SET "cmd_build_type=release"     & SHIFT & GOTO :PARSE_ARGS
 IF /I "%arg%"=="--run"           SET "run_after_build=1"          & SHIFT & GOTO :PARSE_ARGS
-IF /I "%arg%"=="--init-project"  CALL :INIT_PROJECT                & EXIT /B 0
 IF /I "%arg%"=="--clean-logs"    CALL :CLEAN_LOGS                  & EXIT /B 0
 IF /I "%arg%"=="--clean-build"   CALL :CLEAN_BUILD                 & EXIT /B 0
 IF /I "%arg%"=="--clean"         CALL :CLEAN_BUILD & CALL :CLEAN_LOGS & EXIT /B 0
@@ -60,7 +64,7 @@ IF /I "%arg%"=="--clean"         CALL :CLEAN_BUILD & CALL :CLEAN_LOGS & EXIT /B 
 :: Unknown flag
 ECHO "%arg%" | FINDSTR /B /I /C:"--" >NUL
 IF NOT ERRORLEVEL 1 (
-    CALL :LOG WARN "Unknown flag: %arg%"
+    ECHO "Unknown flag: %arg%"
     SHIFT
     GOTO :PARSE_ARGS
 )
@@ -68,7 +72,7 @@ IF NOT ERRORLEVEL 1 (
 ::Handle key:value
 ECHO "%arg%" | FINDSTR /C:":" >NUL
 IF ERRORLEVEL 1 (
-    CALL :LOG WARN "Unknown argument: %arg% (use key:value)" & SHIFT & GOTO :PARSE_ARGS
+    ECHO "Unknown argument: %arg% (use key:value)" & SHIFT & GOTO :PARSE_ARGS
 )
 
 :: Split on first ':' 
@@ -92,12 +96,52 @@ GOTO :PARSE_ARGS
 :ARGS_DONE
 
 REM === Set variables to cmd var > custom var > default var ===
-CALL :SETOR build_type     cmd_build_type     custom_build_type     default_build_type
-CALL :SETOR src_dir        cmd_src_dir        custom_src_dir        default_src_dir
-CALL :SETOR build_dir      cmd_build_dir      custom_build_dir      default_build_dir
-CALL :SETOR output_name    cmd_output_name    custom_output_name    default_output_name
-CALL :SETOR log_dir        cmd_log_dir        custom_log_dir        default_log_dir
-CALL :SETOR include_dirs   cmd_include_dirs   custom_include_dirs   default_include_dirs
+CALL :SETOR build_type     cmd_build_type     conf_build_type     default_build_type
+CALL :SETOR src_dir        cmd_src_dir        conf_src_dir        default_src_dir
+CALL :SETOR build_dir      cmd_build_dir      conf_build_dir      default_build_dir
+CALL :SETOR output_name    cmd_output_name    conf_output_name    default_output_name
+CALL :SETOR log_dir        cmd_log_dir        conf_log_dir        default_log_dir
+CALL :SETOR include_dirs   cmd_include_dirs   conf_include_dirs   default_include_dirs
+
+REM === Create folders if they do not exist
+:: Create forgescript settings directory
+IF NOT EXIST "%forgescript_settings_path%" MKDIR "%forgescript_settings_path%" 2>NUL
+
+:: Create build directory
+IF NOT EXIST "%build_dir%" MKDIR "%build_dir%" 2>NUL
+
+:: Create source directory
+IF NOT EXIST "%src_dir%" MKDIR "%src_dir%" 2>NUL
+
+:: Create log directory
+IF NOT EXIST "%log_dir%" MKDIR "%log_dir%" 2>NUL
+
+:: Create include directories
+SET "list=!include_dirs!"
+:CREATE_INCLUDE_DIRS_LOOP
+IF NOT DEFINED list GOTO :CREATE_INCLUDE_DIRS_LOOP_DONE
+:: Split off the first path (%%A) and keep the rest (%%B)
+FOR /F "tokens=1,* delims=;" %%A IN ("!list!") DO (
+    :: include_dirs should contain paths that are not quoted
+    SET "clean_path=%%A"
+
+    :: Create directory
+    IF NOT EXIST "!clean_path!" MKDIR "!clean_path!" 2>NUL
+
+    :: Prepare the remaining part for next iteration
+    SET "list=%%B"
+)
+GOTO :CREATE_INCLUDE_DIRS_LOOP
+:CREATE_INCLUDE_DIRS_LOOP_DONE
+
+REM === Save current build config ===
+ECHO build_type:%build_type%> "%forgescript_settings_path%%forgescript_settings_file_name%"
+ECHO src_dir:%src_dir%>> "%forgescript_settings_path%%forgescript_settings_file_name%"
+ECHO build_dir:%build_dir%>> "%forgescript_settings_path%%forgescript_settings_file_name%"
+ECHO output_name:%output_name%>> "%forgescript_settings_path%%forgescript_settings_file_name%"
+ECHO log_dir:%log_dir%>> "%forgescript_settings_path%%forgescript_settings_file_name%"
+ECHO include_dirs:%include_dirs%>> "%forgescript_settings_path%%forgescript_settings_file_name%"
+
 
 REM === Initialize log ===
 (
@@ -117,53 +161,44 @@ REM === Initialize log ===
 
 GOTO :MAIN
 
-REM === Initialize project directory structure based on the DEFAULT/CUSTOM/CMD ARGS values ===
-:INIT_PROJECT
-IF NOT EXIST "%build_dir%" MKDIR "%build_dir%" 2>NUL
-IF NOT EXIST "%src_dir%" MKDIR "%src_dir%" 2>NUL
-IF NOT EXIST "%log_dir%" MKDIR "%log_dir%" 2>NUL
-
-FOR %%i IN (%include_dirs%) DO (
-    SET "quoted_dir="%%i""
-    IF NOT EXIST "!quoted_dir!" MKDIR "!quoted_dir!" 2>NUL
-)
-GOTO :EOF
-
 REM === Clean the build directory ===
 :CLEAN_BUILD
-CALL :LOG INFO "Cleaning build directory: %build_dir%..."
+CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%forgescript_settings_path%%forgescript_last_build_info_file_name%"
 IF NOT EXIST "%build_dir%" GOTO :EOF
+ECHO "Cleaning build directory: %build_dir%..."
 CALL :IS_SUBDIR "%build_dir%" "%~dp0" is_safe
 IF /I "%is_safe%"=="YES" (
-    CALL :LOG INFO "Cleaning project-local build files: %build_dir%"
+    ECHO "Cleaning project-local build files: %build_dir%"
     DEL /Q /F "%build_dir%%output_name%" 2>NUL
     DEL /Q /F "%build_dir%%output_name%.exe" 2>NUL
     DEL /Q /F "%build_dir%%output_name%.ilk" 2>NUL
     DEL /Q /F "%build_dir%%output_name%.pdb" 2>NUL
 ) ELSE IF DEFINED force_clean (
-    CALL :LOG WARN "FORCE: Cleaning external build dir: %build_dir%"
+    ECHO "FORCE: Cleaning external build dir: %build_dir%"
     DEL /Q /F "%build_dir%%output_name%" 2>NUL
     DEL /Q /F "%build_dir%%output_name%.exe" 2>NUL
     DEL /Q /F "%build_dir%%output_name%.ilk" 2>NUL
     DEL /Q /F "%build_dir%%output_name%.pdb" 2>NUL
 ) ELSE (
-    CALL :LOG WARN "build_dir outside project. Use --clean --force to clean."
+    ECHO "build_dir outside project. Use --clean --force to clean."
 )
 CALL :LOG INFO "Done."
 GOTO :EOF
 
 REM === Clean the log directory ===
 :CLEAN_LOGS
+CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%forgescript_settings_path%%forgescript_last_build_info_file_name%"
 IF NOT EXIST "%log_dir%" GOTO :EOF
+ECHO "Cleaning log directory: %log_dir%..."
 CALL :IS_SUBDIR "%log_dir%" "%~dp0" is_safe
 IF /I "%is_safe%"=="YES" (
-    CALL :LOG INFO "Cleaning project-local logs: %log_dir%"
+    ECHO "Cleaning project-local logs: %log_dir%"
     DEL /Q /F "%log_dir%forgescript_build_*.log" 2>NUL
 ) ELSE IF DEFINED force_clean (
-    CALL :LOG WARN "FORCE: Cleaning external log dir: %log_dir%"
+    ECHO "FORCE: Cleaning external log dir: %log_dir%"
     DEL /Q /F "%log_dir%forgescript_build_*.log" 2>NUL
 ) ELSE (
-    CALL :LOG WARN "log_dir outside project. Use --clean --force to clean."
+    ECHO "log_dir outside project. Use --clean --force to clean."
 )
 CALL :LOG INFO "Done."
 GOTO :EOF
@@ -253,10 +288,10 @@ ENDLOCAL
 EXIT /B 0
 
 :SETOR
-:: Set target = cmd var > custom var > default var
+:: Set target = cmd var > conf var > default var
 :: %1 = target
 :: %2 = cmd var
-:: %3 = custom var
+:: %3 = conf var
 :: %4 = default var
 IF DEFINED %2 (
     SET "%~1=!%~2!"
@@ -306,4 +341,25 @@ ECHO %child_uppercased% | FINDSTR /I /B /C:"%parent_uppercased%" >NUL
 IF NOT ERRORLEVEL 1 SET "result=YES"
 
 SET "%~3=%result%"
+GOTO :EOF
+
+:READ_KEY_VAL_PAIRS_FROM_FILE
+SET "fpath=%~f1"
+IF NOT EXIST "%fpath%" GOTO :EOF
+FOR /F "usebackq tokens=1,* delims=:" %%A IN ("%fpath%") DO (
+    :: Get the key
+    SET "key=%%A"
+
+    :: Skip empty lines or lines without value
+    IF "%%B"=="" GOTO :CONT
+
+    :: Get the value and remove surrounding quotes if present
+    SET "value=%%B"
+    FOR %%V IN ("!value!") DO SET "value=%%~V"
+
+    :: Set a variable with the name of the key
+    SET "!key!=!value!"
+
+    :CONT
+)
 GOTO :EOF
