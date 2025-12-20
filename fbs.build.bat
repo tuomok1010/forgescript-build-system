@@ -5,7 +5,9 @@ REM  Author: Tuomo Kanniainen
 REM  License: MIT (see LICENSE file)
 REM ==================================================================
 
-TODO: REMOVE ) BUG AND TEST CONFIG FILE SETTINGS
+REM TODO Add log initialize to top, get rid of echoes
+REM TODO Edit :READ_KEY_VAL_PAIRS_FROM_FILE so that it can be used with the clean labels (no conf_ prefix)
+
 SETLOCAL EnableDelayedExpansion
 ECHO [SCRIPT] Running from: %~f0
 
@@ -16,10 +18,18 @@ REM ===== Create a timestamp =====
 CALL :MAKETIMESTAMP timestamp
 
 REM IMPORTANT: DO NOT EDIT THESE or it can lead to stale/lost data when cleaning up project
-SET "log_file_name=forgescript_build_%timestamp%.log"
-SET "forgescript_settings_path=%~dp0forgescript\"
-SET "forgescript_last_build_info_file_name=fbs_last.info"
-SET "forgescript_build_conf_file_name=fbs_build_settings.conf"
+SET "forgescript_path=%~dp0forgescript\"
+SET "forgescript_log_file_name=forgescript_build_%timestamp%.log"
+SET "forgescript_last_build_info_file_name=fbs_build.info"
+SET "forgescript_build_conf_file_name=fbs_build.conf"
+
+REM ===== DEFAULT (Low  precedence: can be overwritten by CUSTOM, config file, or cmd args) =====
+SET "default_build_type=debug"
+SET "default_src_dir=%~dp0"
+SET "default_build_dir=%~dp0build\"
+SET "default_output_name=program.exe"
+SET "default_log_dir=%forgescript_path%log\"
+SET "default_include_dirs=%~dp0include w spaces\;%~dp0include2\"
 
 REM ===== CONFIG FILE (Mid precedence: can be overwritten by cmd args) =====
 SET "conf_build_type="
@@ -28,14 +38,6 @@ SET "conf_build_dir="
 SET "conf_output_name="
 SET "conf_log_dir="
 SET "conf_include_dirs="
-
-REM ===== DEFAULT (Low  precedence: can be overwritten by CUSTOM, config file, or cmd args) =====
-SET "default_build_type=debug"
-SET "default_src_dir=%~dp0"
-SET "default_build_dir=%~dp0build\"
-SET "default_output_name=program.exe"
-SET "default_log_dir=%forgescript_settings_path%log\"
-SET "default_include_dirs=%~dp0include w spaces\;%~dp0include2\"
 
 REM ===== CMD (High precedence: cannot be overwritten) =====
 SET "cmd_build_type="
@@ -46,7 +48,7 @@ SET "cmd_log_dir="
 SET "cmd_include_dirs="
 
 REM === Parse config file ===
-CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%forgescript_settings_path%%forgescript_build_conf_file_name%"
+CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%forgescript_path%%forgescript_build_conf_file_name%"
 
 REM === Parse command-line arguments ===
 :PARSE_ARGS
@@ -82,8 +84,8 @@ FOR /F "tokens=1,* delims=:" %%A IN ("%arg%") DO (
 )
 
 :: Remove surrounding quotes from key and value if present
-FOR %%K IN ("!cmd_arg_key!") DO SET "cmd_arg_key=%%~K"
-FOR %%V IN ("!cmd_arg_val!") DO SET "cmd_arg_val=%%~V"
+CALL :STRIP_QUOTES_VAR cmd_arg_key
+CALL :STRIP_QUOTES_VAR cmd_arg_val
 
 ::Map key to custom variable
 IF /I "!cmd_arg_key!"=="src_dir"        SET "cmd_src_dir=!cmd_arg_val!"
@@ -105,7 +107,7 @@ CALL :SETOR include_dirs   cmd_include_dirs   conf_include_dirs   default_includ
 
 REM === Create folders if they do not exist
 :: Create forgescript settings directory
-IF NOT EXIST "%forgescript_settings_path%" MKDIR "%forgescript_settings_path%" 2>NUL
+IF NOT EXIST "%forgescript_path%" MKDIR "%forgescript_path%" 2>NUL
 
 :: Create build directory
 IF NOT EXIST "%build_dir%" MKDIR "%build_dir%" 2>NUL
@@ -135,13 +137,12 @@ GOTO :CREATE_INCLUDE_DIRS_LOOP
 :CREATE_INCLUDE_DIRS_LOOP_DONE
 
 REM === Save current build config ===
-ECHO build_type:%build_type%> "%forgescript_settings_path%%forgescript_settings_file_name%"
-ECHO src_dir:%src_dir%>> "%forgescript_settings_path%%forgescript_settings_file_name%"
-ECHO build_dir:%build_dir%>> "%forgescript_settings_path%%forgescript_settings_file_name%"
-ECHO output_name:%output_name%>> "%forgescript_settings_path%%forgescript_settings_file_name%"
-ECHO log_dir:%log_dir%>> "%forgescript_settings_path%%forgescript_settings_file_name%"
-ECHO include_dirs:%include_dirs%>> "%forgescript_settings_path%%forgescript_settings_file_name%"
-
+ECHO build_type:%build_type%> "%forgescript_path%%forgescript_last_build_info_file_name%"
+ECHO src_dir:%src_dir%>> "%forgescript_path%%forgescript_last_build_info_file_name%"
+ECHO build_dir:%build_dir%>> "%forgescript_path%%forgescript_last_build_info_file_name%"
+ECHO output_name:%output_name%>> "%forgescript_path%%forgescript_last_build_info_file_name%"
+ECHO log_dir:%log_dir%>> "%forgescript_path%%forgescript_last_build_info_file_name%"
+ECHO include_dirs:%include_dirs%>> "%forgescript_path%%forgescript_last_build_info_file_name%"
 
 REM === Initialize log ===
 (
@@ -157,13 +158,13 @@ REM === Initialize log ===
     ECHO  include_dirs: %include_dirs%
     ECHO ========================================
     ECHO.
-) > "%log_dir%%log_file_name%"
+) > "%log_dir%%forgescript_log_file_name%"
 
 GOTO :MAIN
 
 REM === Clean the build directory ===
 :CLEAN_BUILD
-CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%forgescript_settings_path%%forgescript_last_build_info_file_name%"
+REM TODO READ THE LAST BUILD INFO FILE AND ASSIGN TO THE build_dir etc. variables
 IF NOT EXIST "%build_dir%" GOTO :EOF
 ECHO "Cleaning build directory: %build_dir%..."
 CALL :IS_SUBDIR "%build_dir%" "%~dp0" is_safe
@@ -187,7 +188,7 @@ GOTO :EOF
 
 REM === Clean the log directory ===
 :CLEAN_LOGS
-CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%forgescript_settings_path%%forgescript_last_build_info_file_name%"
+REM TODO READ THE LAST BUILD INFO FILE AND ASSIGN TO THE build_dir etc. variables
 IF NOT EXIST "%log_dir%" GOTO :EOF
 ECHO "Cleaning log directory: %log_dir%..."
 CALL :IS_SUBDIR "%log_dir%" "%~dp0" is_safe
@@ -209,7 +210,7 @@ SET "level=%~1"
 SET "msg=%~2"
 SET "log_line=[%timestamp%] [%level%] %msg%"
 ECHO !log_line!
-ECHO !log_line! >> "%log_dir%%log_file_name%"
+ECHO !log_line! >> "%log_dir%%forgescript_log_file_name%"
 IF /I "%level%"=="ERROR" (
     EXIT /B 1
 )
@@ -276,10 +277,10 @@ clang++ -g -O0 -Wall ^
     !include_dirs_with_compiler_arg_prefixes!^
     !src_files! ^
     -o "%build_dir%%output_name%" ^
-    2>> "%log_dir%%log_file_name%"
+    2>> "%log_dir%%forgescript_log_file_name%"
 
 IF !ERRORLEVEL! NEQ 0 (
-    CALL :LOG ERROR "Compilation failed! See '%log_dir%%log_file_name%' for details"
+    CALL :LOG ERROR "Compilation failed! See '%log_dir%%forgescript_log_file_name%' for details"
 ) ELSE (
     CALL :LOG SUCCESS "Build completed successfully: %build_dir%%output_name%"
 )
@@ -345,21 +346,39 @@ GOTO :EOF
 
 :READ_KEY_VAL_PAIRS_FROM_FILE
 SET "fpath=%~f1"
-IF NOT EXIST "%fpath%" GOTO :EOF
-FOR /F "usebackq tokens=1,* delims=:" %%A IN ("%fpath%") DO (
-    :: Get the key
-    SET "key=%%A"
-
-    :: Skip empty lines or lines without value
-    IF "%%B"=="" GOTO :CONT
-
-    :: Get the value and remove surrounding quotes if present
-    SET "value=%%B"
-    FOR %%V IN ("!value!") DO SET "value=%%~V"
-
-    :: Set a variable with the name of the key
-    SET "!key!=!value!"
-
-    :CONT
+IF NOT EXIST "%fpath%" (
+    ECHO No config file found: %fpath%
+    GOTO :EOF
 )
+
+FOR /F "usebackq tokens=1* delims=:" %%A IN ("%fpath%") DO (
+    SET "key=%%A"
+    SET "value=%%B"
+    CALL :PROCESS_KEY_VAL key value
+)
+GOTO :EOF
+
+:PROCESS_KEY_VAL
+IF NOT DEFINED value (
+    REM Skip lines without value  do nothing
+) ELSE (
+    REM Trim key
+    FOR /F "tokens=*" %%K IN ("!key!") DO SET "key=%%K"
+
+    REM Trim value
+    FOR /F "tokens=*" %%V IN ("!value!") DO SET "value=%%V"
+
+    REM Remove surrounding quotes from value
+    IF "!value:~0,1!"=="""" SET "value=!value:~1,-1!"
+
+    REM Safe assignment
+    ENDLOCAL
+    SET "conf_!key!=!value!"
+    SETLOCAL EnableDelayedExpansion
+)
+GOTO :EOF
+
+:STRIP_QUOTES_VAR
+:: %1 = variable name to modify in place
+FOR %%Q IN ("!%~1!") DO SET "%~1=%%~Q"
 GOTO :EOF
