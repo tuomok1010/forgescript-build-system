@@ -6,7 +6,6 @@ REM  License: MIT (see LICENSE file)
 REM ==================================================================
 
 REM TODO Add log initialize to top, get rid of echoes
-REM TODO Edit :READ_KEY_VAL_PAIRS_FROM_FILE so that it can be used with the clean labels (no conf_ prefix)
 
 SETLOCAL EnableDelayedExpansion
 ECHO [SCRIPT] Running from: %~f0
@@ -20,8 +19,15 @@ CALL :MAKETIMESTAMP timestamp
 REM IMPORTANT: DO NOT EDIT THESE or it can lead to stale/lost data when cleaning up project
 SET "forgescript_path=%~dp0forgescript\"
 SET "forgescript_log_file_name=forgescript_build_%timestamp%.log"
-SET "forgescript_last_build_info_file_name=fbs_build.info"
+SET "forgescript_build_info_file_name=fbs_build.info"
 SET "forgescript_build_conf_file_name=fbs_build.conf"
+
+SET "clean_build_type="
+SET "clean_src_dir="
+SET "clean_build_dir="
+SET "clean_output_name="
+SET "clean_log_dir="
+SET "clean_include_dirs="
 
 REM ===== DEFAULT (Low  precedence: can be overwritten by CUSTOM, config file, or cmd args) =====
 SET "default_build_type=debug"
@@ -48,13 +54,12 @@ SET "cmd_log_dir="
 SET "cmd_include_dirs="
 
 REM === Parse config file ===
-CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%forgescript_path%%forgescript_build_conf_file_name%"
+CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%forgescript_path%%forgescript_build_conf_file_name%" PROCESS_CONF_KEY_VAL
 
 REM === Parse command-line arguments ===
 :PARSE_ARGS
 IF "%~1"=="" GOTO :ARGS_DONE
 SET "arg=%~1"
-REM TODO FIX: CLEANING FLAG BUGGED --> BUILD DIR DOES NOT EXIST YET
 :: Handle flags
 IF /I "%arg%"=="--debug"         SET "cmd_build_type=debug"       & SHIFT & GOTO :PARSE_ARGS
 IF /I "%arg%"=="--release"       SET "cmd_build_type=release"     & SHIFT & GOTO :PARSE_ARGS
@@ -136,13 +141,13 @@ FOR /F "tokens=1,* delims=;" %%A IN ("!list!") DO (
 GOTO :CREATE_INCLUDE_DIRS_LOOP
 :CREATE_INCLUDE_DIRS_LOOP_DONE
 
-REM === Save current build config ===
-ECHO build_type:%build_type%> "%forgescript_path%%forgescript_last_build_info_file_name%"
-ECHO src_dir:%src_dir%>> "%forgescript_path%%forgescript_last_build_info_file_name%"
-ECHO build_dir:%build_dir%>> "%forgescript_path%%forgescript_last_build_info_file_name%"
-ECHO output_name:%output_name%>> "%forgescript_path%%forgescript_last_build_info_file_name%"
-ECHO log_dir:%log_dir%>> "%forgescript_path%%forgescript_last_build_info_file_name%"
-ECHO include_dirs:%include_dirs%>> "%forgescript_path%%forgescript_last_build_info_file_name%"
+REM === Save latest build config to info file(used when cleaning build files/logs ===
+ECHO build_type:%build_type%> "%forgescript_path%%forgescript_build_info_file_name%"
+ECHO src_dir:%src_dir%>> "%forgescript_path%%forgescript_build_info_file_name%"
+ECHO build_dir:%build_dir%>> "%forgescript_path%%forgescript_build_info_file_name%"
+ECHO output_name:%output_name%>> "%forgescript_path%%forgescript_build_info_file_name%"
+ECHO log_dir:%log_dir%>> "%forgescript_path%%forgescript_build_info_file_name%"
+ECHO include_dirs:%include_dirs%>> "%forgescript_path%%forgescript_build_info_file_name%"
 
 REM === Initialize log ===
 (
@@ -164,22 +169,22 @@ GOTO :MAIN
 
 REM === Clean the build directory ===
 :CLEAN_BUILD
-REM TODO READ THE LAST BUILD INFO FILE AND ASSIGN TO THE build_dir etc. variables
-IF NOT EXIST "%build_dir%" GOTO :EOF
+CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%forgescript_path%%forgescript_build_info_file_name%" PROCESS_CLEAN_KEY_VAL
+IF NOT EXIST "%clean_build_dir%" GOTO :EOF
 ECHO "Cleaning build directory: %build_dir%..."
-CALL :IS_SUBDIR "%build_dir%" "%~dp0" is_safe
+CALL :IS_SUBDIR "%clean_build_dir%" "%~dp0" is_safe
 IF /I "%is_safe%"=="YES" (
-    ECHO "Cleaning project-local build files: %build_dir%"
-    DEL /Q /F "%build_dir%%output_name%" 2>NUL
-    DEL /Q /F "%build_dir%%output_name%.exe" 2>NUL
-    DEL /Q /F "%build_dir%%output_name%.ilk" 2>NUL
-    DEL /Q /F "%build_dir%%output_name%.pdb" 2>NUL
+    ECHO "Cleaning project-local build files: %clean_build_dir%"
+    DEL /Q /F "%clean_build_dir%%clean_output_name%" 2>NUL
+    DEL /Q /F "%clean_build_dir%%clean_output_name%.exe" 2>NUL
+    DEL /Q /F "%clean_build_dir%%clean_output_name%.ilk" 2>NUL
+    DEL /Q /F "%clean_build_dir%%clean_output_name%.pdb" 2>NUL
 ) ELSE IF DEFINED force_clean (
-    ECHO "FORCE: Cleaning external build dir: %build_dir%"
-    DEL /Q /F "%build_dir%%output_name%" 2>NUL
-    DEL /Q /F "%build_dir%%output_name%.exe" 2>NUL
-    DEL /Q /F "%build_dir%%output_name%.ilk" 2>NUL
-    DEL /Q /F "%build_dir%%output_name%.pdb" 2>NUL
+    ECHO "FORCE: Cleaning external build dir: %clean_build_dir%"
+    DEL /Q /F "%clean_build_dir%%clean_output_name%" 2>NUL
+    DEL /Q /F "%clean_build_dir%%clean_output_name%.exe" 2>NUL
+    DEL /Q /F "%clean_build_dir%%clean_output_name%.ilk" 2>NUL
+    DEL /Q /F "%clean_build_dir%%clean_output_name%.pdb" 2>NUL
 ) ELSE (
     ECHO "build_dir outside project. Use --clean --force to clean."
 )
@@ -188,16 +193,16 @@ GOTO :EOF
 
 REM === Clean the log directory ===
 :CLEAN_LOGS
-REM TODO READ THE LAST BUILD INFO FILE AND ASSIGN TO THE build_dir etc. variables
-IF NOT EXIST "%log_dir%" GOTO :EOF
-ECHO "Cleaning log directory: %log_dir%..."
-CALL :IS_SUBDIR "%log_dir%" "%~dp0" is_safe
+CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%forgescript_path%%forgescript_build_info_file_name%" PROCESS_CLEAN_KEY_VAL
+IF NOT EXIST "%clean_log_dir%" GOTO :EOF
+ECHO "Cleaning log directory: %clean_log_dir%..."
+CALL :IS_SUBDIR "%clean_log_dir%" "%~dp0" is_safe
 IF /I "%is_safe%"=="YES" (
-    ECHO "Cleaning project-local logs: %log_dir%"
-    DEL /Q /F "%log_dir%forgescript_build_*.log" 2>NUL
+    ECHO "Cleaning project-local logs: %clean_log_dir%"
+    DEL /Q /F "%clean_log_dir%forgescript_build_*.log" 2>NUL
 ) ELSE IF DEFINED force_clean (
-    ECHO "FORCE: Cleaning external log dir: %log_dir%"
-    DEL /Q /F "%log_dir%forgescript_build_*.log" 2>NUL
+    ECHO "FORCE: Cleaning external log dir: %clean_log_dir%"
+    DEL /Q /F "%clean_log_dir%forgescript_build_*.log" 2>NUL
 ) ELSE (
     ECHO "log_dir outside project. Use --clean --force to clean."
 )
@@ -345,20 +350,30 @@ SET "%~3=%result%"
 GOTO :EOF
 
 :READ_KEY_VAL_PAIRS_FROM_FILE
+:: Parameters:
+:: %1 = file path
+:: %2 = processing label(e.g. PROCESS_CONFIG_KEY_VAL or PROCESS_CLEAN_KEY_VAL)
 SET "fpath=%~f1"
+SET "processor=%~2"
+
 IF NOT EXIST "%fpath%" (
     ECHO No config file found: %fpath%
+    GOTO :EOF
+)
+
+IF "%processor%"=="" (
+    ECHO Error: No processing label specified.
     GOTO :EOF
 )
 
 FOR /F "usebackq tokens=1* delims=:" %%A IN ("%fpath%") DO (
     SET "key=%%A"
     SET "value=%%B"
-    CALL :PROCESS_KEY_VAL key value
+    CALL :%processor% key value
 )
 GOTO :EOF
 
-:PROCESS_KEY_VAL
+:PROCESS_CONF_KEY_VAL
 IF NOT DEFINED value (
     REM Skip lines without value  do nothing
 ) ELSE (
@@ -374,6 +389,26 @@ IF NOT DEFINED value (
     REM Safe assignment
     ENDLOCAL
     SET "conf_!key!=!value!"
+    SETLOCAL EnableDelayedExpansion
+)
+GOTO :EOF
+
+:PROCESS_CLEAN_KEY_VAL
+IF NOT DEFINED value (
+    REM Skip lines without value  do nothing
+) ELSE (
+    REM Trim key
+    FOR /F "tokens=*" %%K IN ("!key!") DO SET "key=%%K"
+
+    REM Trim value
+    FOR /F "tokens=*" %%V IN ("!value!") DO SET "value=%%V"
+
+    REM Remove surrounding quotes from value
+    IF "!value:~0,1!"=="""" SET "value=!value:~1,-1!"
+
+    REM Safe assignment
+    ENDLOCAL
+    SET "clean_!key!=!value!"
     SETLOCAL EnableDelayedExpansion
 )
 GOTO :EOF
