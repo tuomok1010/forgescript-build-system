@@ -31,14 +31,10 @@ ECHO intermediate_dir:>>"%forgescript_path%%forgescript_build_conf_file_name%"
 ECHO output_name:>> "%forgescript_path%%forgescript_build_conf_file_name%"
 ECHO log_dir:>> "%forgescript_path%%forgescript_build_conf_file_name%"
 ECHO include_dirs:>> "%forgescript_path%%forgescript_build_conf_file_name%"
-
-SET "clean_build_type="
-SET "clean_src_dir="
-SET "clean_build_dir="
-SET "clean_intermediate_dir="
-SET "clean_output_name="
-SET "clean_log_dir="
-SET "clean_include_dirs="
+ECHO lib_dirs:>> "%forgescript_path%%forgescript_build_conf_file_name%"
+ECHO libs:>> "%forgescript_path%%forgescript_build_conf_file_name%"
+ECHO compiler_flags:>> "%forgescript_path%%forgescript_build_conf_file_name%"
+ECHO linker_flags:>> "%forgescript_path%%forgescript_build_conf_file_name%"
 
 REM ===== DEFAULT (Low  precedence: can be overwritten by CUSTOM, config file, or cmd args) =====
 SET "default_build_type=debug"
@@ -48,6 +44,10 @@ SET "default_intermediate_dir=%default_build_dir%intermediate\"
 SET "default_output_name=program.exe"
 SET "default_log_dir=%forgescript_path%log\"
 SET "default_include_dirs=%~dp0include w spaces\;%~dp0include2\"
+SET "default_lib_dirs=%~dp0libs w spaces\;%~dp0libs2\"
+SET "default_libs="
+SET "default_compiler_flags=-g -O0 -Wall"
+SET "default_linker_flags=-g"
 
 REM ===== CONFIG FILE (Mid precedence: can be overwritten by cmd args) =====
 SET "conf_build_type="
@@ -57,6 +57,10 @@ SET "conf_intermediate_dir="
 SET "conf_output_name="
 SET "conf_log_dir="
 SET "conf_include_dirs="
+SET "conf_lib_dirs="
+SET "conf_libs="
+SET "conf_compiler_flags="
+SET "conf_linker_flags="
 
 REM ===== CMD (High precedence: cannot be overwritten) =====
 SET "cmd_build_type="
@@ -66,6 +70,10 @@ SET "cmd_intermediate_dir="
 SET "cmd_output_name="
 SET "cmd_log_dir="
 SET "cmd_include_dirs="
+SET "cmd_lib_dirs="
+SET "cmd_libs="
+SET "cmd_compiler_flags="
+SET "cmd_linker_flags="
 
 REM === Parse config file ===
 CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%forgescript_path%%forgescript_build_conf_file_name%" PROCESS_CONF_KEY_VAL
@@ -106,18 +114,22 @@ FOR /F "tokens=1,* delims=:" %%A IN ("%arg%") DO (
 CALL :STRIP_QUOTES_VAR cmd_arg_key
 CALL :STRIP_QUOTES_VAR cmd_arg_val
 
-::Map key to custom variable
+::Map key to conf variable
 IF /I "!cmd_arg_key!"=="src_dir"          SET "cmd_src_dir=!cmd_arg_val!"
 IF /I "!cmd_arg_key!"=="build_dir"        SET "cmd_build_dir=!cmd_arg_val!"
 IF /I "!cmd_arg_key!"=="intermediate_dir" SET "cmd_intermediate_dir=!cmd_arg_val!"
 IF /I "!cmd_arg_key!"=="output_name"      SET "cmd_output_name=!cmd_arg_val!"
 IF /I "!cmd_arg_key!"=="log_dir"          SET "cmd_log_dir=!cmd_arg_val!"
 IF /I "!cmd_arg_key!"=="include_dirs"     SET "cmd_include_dirs=!cmd_arg_val!"
+IF /I "!cmd_arg_key!"=="lib_dirs"         SET "cmd_lib_dirs=!cmd_arg_val!"
+IF /I "!cmd_arg_key!"=="libs"             SET "cmd_libs=!cmd_arg_val!"
+IF /I "!cmd_arg_key!"=="compiler_flags"   SET "cmd_compiler_flags=!cmd_arg_val!"
+IF /I "!cmd_arg_key!"=="linker_flags"     SET "cmd_linker_flags=!cmd_arg_val!"
 SHIFT
 GOTO :PARSE_ARGS
 :ARGS_DONE
 
-REM === Set variables to cmd var > custom var > default var ===
+REM === Set variables to cmd var > conf var > default var ===
 CALL :SETOR build_type          cmd_build_type          conf_build_type          default_build_type
 CALL :SETOR src_dir             cmd_src_dir             conf_src_dir             default_src_dir
 CALL :SETOR build_dir           cmd_build_dir           conf_build_dir           default_build_dir
@@ -125,6 +137,10 @@ CALL :SETOR intermediate_dir    cmd_intermediate_dir    conf_intermediate_dir   
 CALL :SETOR output_name         cmd_output_name         conf_output_name         default_output_name
 CALL :SETOR log_dir             cmd_log_dir             conf_log_dir             default_log_dir
 CALL :SETOR include_dirs        cmd_include_dirs        conf_include_dirs        default_include_dirs
+CALL :SETOR lib_dirs            cmd_lib_dirs            conf_lib_dirs            default_lib_dirs
+CALL :SETOR libs                cmd_libs                conf_libs                default_libs
+CALL :SETOR compiler_flags      cmd_compiler_flags      conf_compiler_flags      default_compiler_flags
+CALL :SETOR linker_flags        cmd_linker_flags        conf_linker_flags        default_linker_flags
 
 REM === Create project folders if they do not exist
 :: Create build directory
@@ -145,7 +161,7 @@ SET "list=!include_dirs!"
 IF NOT DEFINED list GOTO :CREATE_INCLUDE_DIRS_LOOP_DONE
 :: Split off the first path (%%A) and keep the rest (%%B)
 FOR /F "tokens=1,* delims=;" %%A IN ("!list!") DO (
-    :: include_dirs should contain paths that are not quoted
+    :: include_dirs contain paths that are not quoted
     SET "clean_path=%%A"
 
     :: Create directory
@@ -157,6 +173,24 @@ FOR /F "tokens=1,* delims=;" %%A IN ("!list!") DO (
 GOTO :CREATE_INCLUDE_DIRS_LOOP
 :CREATE_INCLUDE_DIRS_LOOP_DONE
 
+:: Create lib directories
+SET "list=!lib_dirs!"
+:CREATE_LIB_DIRS_LOOP
+IF NOT DEFINED list GOTO :CREATE_LIB_DIRS_LOOP_DONE
+:: Split off the first path (%%A) and keep the rest (%%B)
+FOR /F "tokens=1,* delims=;" %%A IN ("!list!") DO (
+    :: lib_dirs contain paths that are not quoted
+    SET "clean_path=%%A"
+
+    :: Create directory
+    IF NOT EXIST "!clean_path!" MKDIR "!clean_path!" 2>NUL
+
+    :: Prepare the remaining part for next iteration
+    SET "list=%%B"
+)
+GOTO :CREATE_LIB_DIRS_LOOP
+:CREATE_LIB_DIRS_LOOP_DONE
+
 REM === Save latest build config to info file(used when cleaning build files/logs ===
 ECHO build_type:%build_type%> "%forgescript_path%%forgescript_build_info_file_name%"
 ECHO src_dir:%src_dir%>> "%forgescript_path%%forgescript_build_info_file_name%"
@@ -165,6 +199,10 @@ ECHO intermediate_dir:%intermediate_dir%>> "%forgescript_path%%forgescript_build
 ECHO output_name:%output_name%>> "%forgescript_path%%forgescript_build_info_file_name%"
 ECHO log_dir:%log_dir%>> "%forgescript_path%%forgescript_build_info_file_name%"
 ECHO include_dirs:%include_dirs%>> "%forgescript_path%%forgescript_build_info_file_name%"
+ECHO lib_dirs:%lib_dirs%>> "%forgescript_path%%forgescript_build_info_file_name%"
+ECHO libs:%libs%>> "%forgescript_path%%forgescript_build_info_file_name%"
+ECHO compiler_flags:%compiler_flags%>> "%forgescript_path%%forgescript_build_info_file_name%"
+ECHO linker_flags:%linker_flags%>> "%forgescript_path%%forgescript_build_info_file_name%"
 
 REM === Initialize log ===
 (
@@ -178,6 +216,10 @@ REM === Initialize log ===
     ECHO  output_name: %output_name%
     ECHO  log_dir: %log_dir%
     ECHO  include_dirs: %include_dirs%
+    ECHO  lib_dirs: %lib_dirs%
+    ECHO  libs: %libs%
+    ECHO  compiler_flags: %compiler_flags%
+    ECHO  linker_flags: %linker_flags%
     ECHO ========================================
     ECHO.
 ) > "%log_dir%%forgescript_log_file_name%"
@@ -190,37 +232,37 @@ REM === Clean the build directories ===
 CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%forgescript_path%%forgescript_build_info_file_name%" PROCESS_CLEAN_KEY_VAL
 
 :: Clean build dir
-IF NOT EXIST "%clean_build_dir%" GOTO :EOF
-ECHO Cleaning build directory: "%clean_build_dir%"...
-CALL :IS_SUBDIR "%clean_build_dir%" "%~dp0" is_safe
+IF NOT EXIST "%build_dir%" GOTO :EOF
+ECHO Cleaning build directory: "%build_dir%"...
+CALL :IS_SUBDIR "%build_dir%" "%~dp0" is_safe
 IF /I "%is_safe%"=="YES" (
-    ECHO Cleaning project-local build files: "%clean_build_dir%"
-    DEL /Q /F "%clean_build_dir%%clean_output_name%" 2>NUL
-    DEL /Q /F "%clean_build_dir%*.exe" 2>NUL
-    DEL /Q /F "%clean_build_dir%*.ilk" 2>NUL
-    DEL /Q /F "%clean_build_dir%*.pdb" 2>NUL
+    ECHO Cleaning project-local build files: "%build_dir%"
+    DEL /Q /F "%build_dir%%output_name%" 2>NUL
+    DEL /Q /F "%build_dir%*.exe" 2>NUL
+    DEL /Q /F "%build_dir%*.ilk" 2>NUL
+    DEL /Q /F "%build_dir%*.pdb" 2>NUL
 ) ELSE IF DEFINED force_clean (
-    ECHO FORCE: Cleaning external build dir: "%clean_build_dir%"
-    DEL /Q /F "%clean_build_dir%%clean_output_name%" 2>NUL
-    DEL /Q /F "%clean_build_dir%*.exe" 2>NUL
-    DEL /Q /F "%clean_build_dir%*.ilk" 2>NUL
-    DEL /Q /F "%clean_build_dir%*.pdb" 2>NUL
+    ECHO FORCE: Cleaning external build dir: "%build_dir%"
+    DEL /Q /F "%build_dir%%output_name%" 2>NUL
+    DEL /Q /F "%build_dir%*.exe" 2>NUL
+    DEL /Q /F "%build_dir%*.ilk" 2>NUL
+    DEL /Q /F "%build_dir%*.pdb" 2>NUL
 ) ELSE (
     ECHO build_dir outside project. Use --clean --force to clean.
 )
 
 :: Clean intermediate dir
-IF NOT EXIST "%clean_intermediate_dir%" GOTO :EOF
-ECHO Cleaning intermediate directory: "%clean_intermediate_dir%"...
-CALL :IS_SUBDIR "%clean_intermediate_dir%" "%~dp0" is_safe
+IF NOT EXIST "%intermediate_dir%" GOTO :EOF
+ECHO Cleaning intermediate directory: "%intermediate_dir%"...
+CALL :IS_SUBDIR "%intermediate_dir%" "%~dp0" is_safe
 IF /I "%is_safe%"=="YES" (
-    ECHO Cleaning project-local intermediate files: "%clean_intermediate_dir%"
-    DEL /Q /F "%clean_intermediate_dir%*.obj" 2>NUL
-    DEL /Q /F "%clean_intermediate_dir%*.o" 2>NUL
+    ECHO Cleaning project-local intermediate files: "%intermediate_dir%"
+    DEL /Q /F "%intermediate_dir%*.obj" 2>NUL
+    DEL /Q /F "%intermediate_dir%*.o" 2>NUL
 ) ELSE IF DEFINED force_clean (
-    ECHO FORCE: Cleaning external intermediate dir: "%clean_intermediate_dir%"
-    DEL /Q /F "%clean_intermediate_dir%*.obj" 2>NUL
-    DEL /Q /F "%clean_intermediate_dir%*.o" 2>NUL
+    ECHO FORCE: Cleaning external intermediate dir: "%intermediate_dir%"
+    DEL /Q /F "%intermediate_dir%*.obj" 2>NUL
+    DEL /Q /F "%intermediate_dir%*.o" 2>NUL
 ) ELSE (
     ECHO intermediate_dir outside project. Use --clean --force to clean.
 )
@@ -231,15 +273,15 @@ GOTO :EOF
 REM === Clean the log directory ===
 :CLEAN_LOGS
 CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%forgescript_path%%forgescript_build_info_file_name%" PROCESS_CLEAN_KEY_VAL
-IF NOT EXIST "%clean_log_dir%" GOTO :EOF
-ECHO Cleaning log directory: "%clean_log_dir%"...
-CALL :IS_SUBDIR "%clean_log_dir%" "%~dp0" is_safe
+IF NOT EXIST "%log_dir%" GOTO :EOF
+ECHO Cleaning log directory: "%log_dir%"...
+CALL :IS_SUBDIR "%log_dir%" "%~dp0" is_safe
 IF /I "%is_safe%"=="YES" (
-    ECHO Cleaning project-local logs: "%clean_log_dir%"
-    DEL /Q /F "%clean_log_dir%forgescript_build_*.log" 2>NUL
+    ECHO Cleaning project-local logs: "%log_dir%"
+    DEL /Q /F "%log_dir%forgescript_build_*.log" 2>NUL
 ) ELSE IF DEFINED force_clean (
-    ECHO FORCE: Cleaning external log dir: "%clean_log_dir%"
-    DEL /Q /F "%clean_log_dir%forgescript_build_*.log" 2>NUL
+    ECHO FORCE: Cleaning external log dir: "%log_dir%"
+    DEL /Q /F "%log_dir%forgescript_build_*.log" 2>NUL
 ) ELSE (
     ECHO log_dir outside project. Use --clean --force to clean.
 )
@@ -285,8 +327,8 @@ CALL :LOG INFO "Found %file_count% source file(s)"
 REM Collect the include dirs
 SET "list=!include_dirs!"
 SET "include_dirs_prefixed="
-:INCLUDE_DIR_LOOP
-IF NOT DEFINED list GOTO :INCLUDE_DIR_LOOP_DONE
+:COLLECT_INCLUDE_DIRS_LOOP
+IF NOT DEFINED list GOTO :COLLECT_INCLUDE_DIRS_LOOP_DONE
 :: Split off the first path (%%A) and keep the rest (%%B)
 FOR /F "tokens=1,* delims=;" %%A IN ("!list!") DO (
     :: include_dirs contain paths that are not quoted
@@ -304,11 +346,57 @@ FOR /F "tokens=1,* delims=;" %%A IN ("!list!") DO (
     :: Prepare the remaining part for next iteration
     SET "list=%%B"
 )
-GOTO :INCLUDE_DIR_LOOP
-:INCLUDE_DIR_LOOP_DONE
+GOTO :COLLECT_INCLUDE_DIRS_LOOP
+:COLLECT_INCLUDE_DIRS_LOOP_DONE
 
-REM Remove leading space
+REM Collect the lib dirs
+SET "list=!lib_dirs!"
+SET "lib_dirs_prefixed="
+:COLLECT_LIB_DIRS_LOOP
+IF NOT DEFINED list GOTO :COLLECT_LIB_DIRS_LOOP_DONE
+:: Split off the first path (%%A) and keep the rest (%%B)
+FOR /F "tokens=1,* delims=;" %%A IN ("!list!") DO (
+    :: lib_dirs contain paths that are not quoted
+    SET "clean_path=%%A"
+
+    :: Remove trailing backslash if present
+    IF "!clean_path:~-1!"=="\" SET "clean_path=!clean_path:~0,-1!"
+
+    :: Quote the path properly
+    SET "quoted_path="!clean_path!""
+
+    :: Append to the final argument list
+    SET "lib_dirs_prefixed=!lib_dirs_prefixed! -L!quoted_path!"
+
+    :: Prepare the remaining part for next iteration
+    SET "list=%%B"
+)
+GOTO :COLLECT_LIB_DIRS_LOOP
+:COLLECT_LIB_DIRS_LOOP_DONE
+
+REM Collect the libs
+SET "list=!libs!"
+SET "libs_prefixed="
+:COLLECT_LIBS_LOOP
+IF NOT DEFINED list GOTO :COLLECT_LIBS_LOOP_DONE
+:: Split off the first path (%%A) and keep the rest (%%B)
+FOR /F "tokens=1,* delims=;" %%A IN ("!list!") DO (
+    :: libs contain values that are not quoted
+    SET "clean_lib=%%A"
+
+    :: Append to the final argument list
+    SET "libs_prefixed=!libs_prefixed! -l!clean_lib!"
+
+    :: Prepare the remaining part for next iteration
+    SET "list=%%B"
+)
+GOTO :COLLECT_LIBS_LOOP
+:COLLECT_LIBS_LOOP_DONE
+
+REM Remove leading spaces
 IF DEFINED include_dirs_prefixed SET "include_dirs_prefixed=!include_dirs_prefixed:~1!"
+IF DEFINED lib_dirs_prefixed SET "lib_dirs_prefixed=!lib_dirs_prefixed:~1!"
+IF DEFINED libs_prefixed SET "libs_prefixed=!libs_prefixed:~1!"
 
 REM === Compile sources (incremental) ===
 FOR %%F IN (!src_files!) DO (
@@ -322,10 +410,11 @@ FOR %%F IN (!src_files!) DO (
     IF EXIST "!obj!" (
 	XCOPY /L /D /Y /Q "!src!" "!obj!" | FINDSTR /B /C:"0 " >NUL && SET "needs_compile=0"
     )
-
+    @ECHO ON
     IF "!needs_compile!"=="1" (
         CALL :LOG INFO "Compiling: !src!"
-        clang++ -g -O0 -Wall ^
+        clang++ ^
+	    !compiler_flags! ^
             !include_dirs_prefixed! ^
             -c "!src!" ^
             -o "!obj!" ^
@@ -343,8 +432,11 @@ FOR %%F IN (!src_files!) DO (
 REM === Link object files ===
 CALL :LOG INFO "Linking executable: %output_name%"
 
-clang++ -g ^
+clang++ ^
+    !linker_flags! ^
     "%intermediate_dir%*.obj" ^
+    !lib_dirs_prefixed! ^
+    !libs_prefixed! ^
     -o "%build_dir%%output_name%" ^
     2>> "%log_dir%%forgescript_log_file_name%"
 
@@ -475,7 +567,7 @@ IF NOT DEFINED value (
 
     REM Safe assignment
     ENDLOCAL
-    SET "clean_!key!=!value!"
+    SET "!key!=!value!"
     SETLOCAL EnableDelayedExpansion
 )
 GOTO :EOF
