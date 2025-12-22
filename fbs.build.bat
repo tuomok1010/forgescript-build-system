@@ -24,7 +24,6 @@ SET "forgescript_build_conf_file_name=fbs_build.conf"
 
 REM Create forgescript directory and conf file
 IF NOT EXIST "%forgescript_path%" MKDIR "%forgescript_path%" 2>NUL
-ECHO build_type:> "%forgescript_path%%forgescript_build_conf_file_name%"
 ECHO src_dir:>> "%forgescript_path%%forgescript_build_conf_file_name%"
 ECHO build_dir:>> "%forgescript_path%%forgescript_build_conf_file_name%"
 ECHO intermediate_dir:>>"%forgescript_path%%forgescript_build_conf_file_name%"
@@ -37,7 +36,6 @@ ECHO compiler_flags:>> "%forgescript_path%%forgescript_build_conf_file_name%"
 ECHO linker_flags:>> "%forgescript_path%%forgescript_build_conf_file_name%"
 
 REM ===== DEFAULT (Low  precedence: can be overwritten by CUSTOM, config file, or cmd args) =====
-SET "default_build_type=debug"
 SET "default_src_dir=%~dp0"
 SET "default_build_dir=%~dp0build\"
 SET "default_intermediate_dir=%default_build_dir%intermediate\"
@@ -50,7 +48,6 @@ SET "default_compiler_flags=-g -O0 -Wall"
 SET "default_linker_flags=-g"
 
 REM ===== CONFIG FILE (Mid precedence: can be overwritten by cmd args) =====
-SET "conf_build_type="
 SET "conf_src_dir="
 SET "conf_build_dir="
 SET "conf_intermediate_dir="
@@ -63,7 +60,6 @@ SET "conf_compiler_flags="
 SET "conf_linker_flags="
 
 REM ===== CMD (High precedence: cannot be overwritten) =====
-SET "cmd_build_type="
 SET "cmd_src_dir="
 SET "cmd_build_dir="
 SET "cmd_intermediate_dir="
@@ -83,9 +79,8 @@ REM === Parse command-line arguments ===
 IF "%~1"=="" GOTO :ARGS_DONE
 SET "arg=%~1"
 :: Handle flags
-IF /I "%arg%"=="--debug"         SET "cmd_build_type=debug"       & SHIFT & GOTO :PARSE_ARGS
-IF /I "%arg%"=="--release"       SET "cmd_build_type=release"     & SHIFT & GOTO :PARSE_ARGS
 IF /I "%arg%"=="--run"           SET "run_after_build=1"          & SHIFT & GOTO :PARSE_ARGS
+IF /I "%arg%"=="--help"          CALL :PRINT_HELP                  & EXIT /B 0
 IF /I "%arg%"=="--clean-logs"    CALL :CLEAN_LOGS                  & EXIT /B 0
 IF /I "%arg%"=="--clean-build"   CALL :CLEAN_BUILD                 & EXIT /B 0
 IF /I "%arg%"=="--clean"         CALL :CLEAN_BUILD & CALL :CLEAN_LOGS & EXIT /B 0
@@ -130,7 +125,6 @@ GOTO :PARSE_ARGS
 :ARGS_DONE
 
 REM === Set variables to cmd var > conf var > default var ===
-CALL :SETOR build_type          cmd_build_type          conf_build_type          default_build_type
 CALL :SETOR src_dir             cmd_src_dir             conf_src_dir             default_src_dir
 CALL :SETOR build_dir           cmd_build_dir           conf_build_dir           default_build_dir
 CALL :SETOR intermediate_dir    cmd_intermediate_dir    conf_intermediate_dir    default_intermediate_dir
@@ -192,7 +186,6 @@ GOTO :CREATE_LIB_DIRS_LOOP
 :CREATE_LIB_DIRS_LOOP_DONE
 
 REM === Save latest build config to info file(used when cleaning build files/logs ===
-ECHO build_type:%build_type%> "%forgescript_path%%forgescript_build_info_file_name%"
 ECHO src_dir:%src_dir%>> "%forgescript_path%%forgescript_build_info_file_name%"
 ECHO build_dir:%build_dir%>> "%forgescript_path%%forgescript_build_info_file_name%"
 ECHO intermediate_dir:%intermediate_dir%>> "%forgescript_path%%forgescript_build_info_file_name%"
@@ -210,9 +203,9 @@ REM === Initialize log ===
     ECHO ========================================
     ECHO  BUILD STARTED: %DATE% %TIME%
     ECHO  Script: %~f0
-    ECHO  Build: %build_type%
     ECHO  src_dir: %src_dir%
     ECHO  build_dir: %build_dir%
+    ECHO  intermediate_dir: %intermediate_dir%
     ECHO  output_name: %output_name%
     ECHO  log_dir: %log_dir%
     ECHO  include_dirs: %include_dirs%
@@ -226,6 +219,89 @@ REM === Initialize log ===
 
 GOTO :MAIN
 
+REM == Print help message ===
+:PRINT_HELP
+ECHO.
+ECHO %~n0%~x0 [KEY:VAL ...] [--FLAG ...]
+ECHO [KEY]:
+ECHO src_dir
+ECHO    Directory path to search for source files. Subdirectories will be searched too. Should be enclosed in quotes.
+ECHO    Example: "src_dir:C:\Users\my_user\Projects\MyProject\src\"
+ECHO build_dir
+ECHO    Directory path where to place the program executables. Should be enclosed in quotes.
+ECHO    Example: "build_dir:C:\Users\my_user\Projects\MyProject\build\"
+ECHO intermediate_dir
+ECHO    Directory path where to place the object files. Should be enclosed in quotes.
+ECHO    Example: "intermediate_dir:C:\Users\my_user\Projects\MyProject\build\intermediate\"
+ECHO output_name
+ECHO    Name of the executable. Should contain the extension.
+ECHO    Example: output_name:program.exe
+ECHO log_dir
+ECHO    Directory path where to store forgescript logs. Should be enclosed in quotes.
+ECHO    Example: "log_dir:C:\Users\my_user\Projects\MyProject\forgescript\log\"
+ECHO include_dirs
+ECHO    Additional include directories' paths. Should be enclosed in quotes and separated by a ";" symbol.
+ECHO    Example: "include_dirs:C:\Users\my_user\Projects\MyProject\include\;C:\Users\my_user\Projects\MyProject\include2\"
+ECHO lib_dirs
+ECHO    Additional library directories' paths. Should be enclosed in quotes and separated by a ";" symbol.
+ECHO    Example: "lib_dirs:C:\Users\my_user\Projects\MyProject\libraries\;C:\Users\my_user\Projects\libraries2\"
+ECHO libs
+ECHO    Libraries to link to the program. Should be enclosed in quotes and separated by a ";" symbol.
+ECHO    Example: "libs:glfw3;opengl32;gdi32;user32"
+ECHO compiler_flags
+ECHO    Flags for the clang compiler. Should be enclosed in quotes and separated by a ";" symbol.
+ECHO    Example: "compiler_flags:-g;-O0;-Wall"
+ECHO linker_flags
+ECHO    Flags for the clang linker. Should be enclosed in quotes and separated by a ";" symbol.
+ECHO    Example: "linker_flags:-g"
+ECHO.
+ECHO [FLAG]:
+ECHO --help
+ECHO    Print this help message.
+ECHO --run
+ECHO    Run the program after compiling.
+ECHO --clean-logs
+ECHO    Clean the logs in the log folder.
+ECHO --clean-build
+ECHO    Clean all of the build files in the build folder.
+ECHO --clean
+ECHO    Clean both logs and build files.
+ECHO.
+ECHO Full working example with the command line arguments (note that missing key:val pairs are drawn from defaults or .config file:
+ECHO   %~n0%~x0 "build_dir:C:\Users\my_user\Projects\MyProject\build\" output_name:hello_world.exe "compiler_flags:-g;-O0;-Wall"
+ECHO.
+ECHO NOTE:
+ECHO   Command line arguments should only be used for flags, or testing/trivial projects.
+ECHO   It is recommended to use the %forgescript_build_conf_file_name% file to configure the script!
+ECHO   fbs_build.conf file location: %forgescript_path%%forgescript_build_conf_file_name%
+ECHO.
+ECHO Example .conf file (note that quotes are not required, unlike with the cmd line args):
+ECHO src_dir:C:\Users\my_user\Projects\MyProject\src\
+ECHO build_dir:C:\Users\my_user\Projects\MyProject\build\
+ECHO intermediate_dir:C:\Users\my_user\Projects\MyProject\build\intermediate\
+ECHO output_name:hello_world.exe
+ECHO log_dir:C:\Users\my_user\Projects\MyProject\forgescript\log\
+ECHO include_dirs:C:\Users\my_user\Projects\MyProject\include\;C:\Users\my_user\Projects\MyProject\include2\
+ECHO lib_dirs:C:\Users\my_user\Projects\MyProject\libraries\
+ECHO libs:glfw3;opengl32;gdi32;user32
+ECHO compiler_flags:-g;-O0;-Wall
+ECHO linker_flags:-g
+ECHO.
+ECHO in addition to the conf file and command line arguments, you can also edit the default variable values in the %~n0%~x0 script. These variables are:
+ECHO default_src_dir
+ECHO default_build_dir
+ECHO default_intermediate_dir
+ECHO default_output_name
+ECHO default_log_dir
+ECHO default_include_dirs
+ECHO default_lib_dirs
+ECHO default_libs=
+ECHO default_compiler_flags=
+ECHO default_linker_flags
+ECHO.
+ECHO IMPORTANT: configuration settings have precedences: HIGH - command line arguments, MID - config file, LOW - defaults in script
+ECHO Higher precedence values overwrite lower precedence values!
+GOTO :EOF
 
 REM === Clean the build directories ===
 :CLEAN_BUILD
