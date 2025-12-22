@@ -23,17 +23,21 @@ SET "forgescript_build_info_file_name=fbs_build.info"
 SET "forgescript_build_conf_file_name=fbs_build.conf"
 
 REM Create forgescript directory and conf file
-IF NOT EXIST "%forgescript_path%" MKDIR "%forgescript_path%" 2>NUL
-ECHO src_dir:>> "%forgescript_path%%forgescript_build_conf_file_name%"
-ECHO build_dir:>> "%forgescript_path%%forgescript_build_conf_file_name%"
-ECHO intermediate_dir:>>"%forgescript_path%%forgescript_build_conf_file_name%"
-ECHO output_name:>> "%forgescript_path%%forgescript_build_conf_file_name%"
-ECHO log_dir:>> "%forgescript_path%%forgescript_build_conf_file_name%"
-ECHO include_dirs:>> "%forgescript_path%%forgescript_build_conf_file_name%"
-ECHO lib_dirs:>> "%forgescript_path%%forgescript_build_conf_file_name%"
-ECHO libs:>> "%forgescript_path%%forgescript_build_conf_file_name%"
-ECHO compiler_flags:>> "%forgescript_path%%forgescript_build_conf_file_name%"
-ECHO linker_flags:>> "%forgescript_path%%forgescript_build_conf_file_name%"
+IF NOT EXIST "%forgescript_path%" (
+   ECHO No forgescript folder found. Initializing forgescript. Run %~n0%~x0 --help for help.
+   MKDIR "%forgescript_path%" 2>NUL
+   ECHO src_dir:> "%forgescript_path%%forgescript_build_conf_file_name%"
+   ECHO build_dir:>> "%forgescript_path%%forgescript_build_conf_file_name%"
+   ECHO intermediate_dir:>>"%forgescript_path%%forgescript_build_conf_file_name%"
+   ECHO output_name:>> "%forgescript_path%%forgescript_build_conf_file_name%"
+   ECHO log_dir:>> "%forgescript_path%%forgescript_build_conf_file_name%"
+   ECHO include_dirs:>> "%forgescript_path%%forgescript_build_conf_file_name%"
+   ECHO lib_dirs:>> "%forgescript_path%%forgescript_build_conf_file_name%"
+   ECHO libs:>> "%forgescript_path%%forgescript_build_conf_file_name%"
+   ECHO compiler_flags:>> "%forgescript_path%%forgescript_build_conf_file_name%"
+   ECHO linker_flags:>> "%forgescript_path%%forgescript_build_conf_file_name%"
+   EXIT /B 0
+)
 
 REM ===== DEFAULT (Low  precedence: can be overwritten by CUSTOM, config file, or cmd args) =====
 SET "default_src_dir=%~dp0"
@@ -186,7 +190,7 @@ GOTO :CREATE_LIB_DIRS_LOOP
 :CREATE_LIB_DIRS_LOOP_DONE
 
 REM === Save latest build config to info file(used when cleaning build files/logs ===
-ECHO src_dir:%src_dir%>> "%forgescript_path%%forgescript_build_info_file_name%"
+ECHO src_dir:%src_dir%> "%forgescript_path%%forgescript_build_info_file_name%"
 ECHO build_dir:%build_dir%>> "%forgescript_path%%forgescript_build_info_file_name%"
 ECHO intermediate_dir:%intermediate_dir%>> "%forgescript_path%%forgescript_build_info_file_name%"
 ECHO output_name:%output_name%>> "%forgescript_path%%forgescript_build_info_file_name%"
@@ -486,7 +490,7 @@ FOR %%F IN (!src_files!) DO (
     IF EXIST "!obj!" (
 	XCOPY /L /D /Y /Q "!src!" "!obj!" | FINDSTR /B /C:"0 " >NUL && SET "needs_compile=0"
     )
-    @ECHO ON
+
     IF "!needs_compile!"=="1" (
         CALL :LOG INFO "Compiling: !src!"
         clang++ ^
