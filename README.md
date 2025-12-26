@@ -18,37 +18,140 @@ This program requires that you have the clang compiler tools installed and added
 2. Run the script. It will first initialize itself by creating a folder called "forgescript".
 3. (Optional) Run fbs.build.bat --help for information about the tool. The same(and more) information is covered in this quick guide.
 
-NOTE: There are three ways to configure forgescript. These are the "fbs_build.conf" file, command line arguments, and the script source code itself (by editing variables containing default values). Each method has a certain precedence: HIGH cmd line args, MID .conf file, LOW default values in script. Higher precedence values overwrite lower precedence values! We will cover all three methods of customization next.
+There are three ways to configure forgescript. These are the "fbs_build.conf" file, command line arguments, and the script source code itself (by editing variables containing default values). Each method has a certain precedence: HIGH cmd line args, MID .conf file, LOW default values in script. Higher precedence values overwrite lower precedence values! We will cover all three methods of customization next.
 
-### Customizing the .conf file
-After running the script for the first time, inside the "forgescript" folder is a file called "fbs_build.conf". This file is the main method of customizing the tool. It contains key:value pairs of the various tool settings. The keys (and example values) are:
+NOTE: It is highly recommended to use absolute paths! Relative paths have NOT been tested with this tool.
 
-src_dir:C:\Users\my_user\Projects\MyProject\src\
+### Customizing with the .conf file
+After running the script for the first time, inside the "forgescript" folder is a file called "fbs_build.conf". This file is the main method of customizing the tool. It contains key:value pairs of the various tool settings. NOTE: Do not confuse this with the fbs_build.info file which may exist in the same folder! The keys(bold) and example values are:
+
+**src_dir**:C:\Users\my_user\Projects\MyProject\src\
   - Directory path to search for source files. Subdirectories will be searched too. If the folder does not exist, it will be created.
 
-build_dir:C:\Users\my_user\Projects\MyProject\build\
+**build_dir**:C:\Users\my_user\Projects\MyProject\build\
   - Directory path where to place the program executables. If the folder does not exist, it will be created.
 
-intermediate_dir:C:\Users\my_user\Projects\MyProject\build\intermediate\
+**intermediate_dir**:C:\Users\my_user\Projects\MyProject\build\intermediate\
   - Directory path where to place the object files. If the folder does not exist, it will be created.
 
-output_name:hello_world.exe
+**output_name**:hello_world.exe
   - Name of the executable. Should contain the extension.
 
-log_dir:C:\Users\my_user\Projects\MyProject\forgescript\log\
+**log_dir**:C:\Users\my_user\Projects\MyProject\forgescript\log\
   - Directory path where to store forgescript logs. If the folder does not exist, it will be created.
 
-include_dirs:C:\Users\my_user\Projects\MyProject\include\;C:\Users\my_user\Projects\MyProject\include2\
+**include_dirs**:C:\Users\my_user\Projects\MyProject\include\;C:\Users\my_user\Projects\MyProject\include2\
   - Additional include directories' paths. Separated by ";" character. If the folders does not exist, they will be created.
 
-lib_dirs:C:\Users\my_user\Projects\MyProject\libraries\
+**lib_dirs**:C:\Users\my_user\Projects\MyProject\libraries\
   - Additional library directories' paths. Separated by ";" character. If the folders does not exist, they will be created.
 
-libs:glfw3;opengl32;gdi32;user32
+**libs**:glfw3;opengl32;gdi32;user32
   - Libraries to link to the program. Separated by ";" character.
 
-compiler_flags:-g;-O0;-Wall
+**compiler_flags**:-g;-O0;-Wall
   - Flags for the clang compiler. Separated by ";" character.
 
-linker_flags:-g
+**linker_flags**:-g
   - Flags for the clang linker. Separated by ";" character.
+
+### Customizing with command line arguments
+You can customize all of the same key:value pairs through the command line arguments as you can through the .conf file. However you must include quotes around the key:value pairs that are multi-variable OR contain spaces (such as file paths with spaces). If you want to be extra safe, you can quote all of the arguments. In addition to the key:value pairs, you can also pass flags to the tool. Currently the only way to pass flags to the tool is by using the command line arguments. Keys(bold) and example values that you can pass are as follows (pay attention to the quotes, they cover both the key and the value!):
+
+**"src_dir**:C:\Users\my_user\Projects\MyProject\src\"
+  - Directory path to search for source files. Subdirectories will be searched too. If the folder does not exist, it will be created.
+
+**"build_dir**:C:\Users\my_user\Projects\MyProject\build\"
+  - Directory path where to place the program executables. If the folder does not exist, it will be created.
+
+**"intermediate_dir**:C:\Users\my_user\Projects\MyProject\build\intermediate\"
+  - Directory path where to place the object files. If the folder does not exist, it will be created.
+
+**output_name**:hello_world.exe
+  - Name of the executable. Should contain the extension.
+
+**"log_dir**:C:\Users\my_user\Projects\MyProject\forgescript\log\"
+  - Directory path where to store forgescript logs. If the folder does not exist, it will be created.
+
+**"include_dirs**:C:\Users\my_user\Projects\MyProject\include\;C:\Users\my_user\Projects\MyProject\include2\"
+  - Additional include directories' paths. Separated by ";" character. If the folders does not exist, they will be created.
+
+**"lib_dirs**:C:\Users\my_user\Projects\MyProject\libraries\"
+  - Additional library directories' paths. Separated by ";" character. If the folders does not exist, they will be created.
+
+**"libs**:glfw3;opengl32;gdi32;user32"
+  - Libraries to link to the program. Separated by ";" character.
+
+**"compiler_flags**:-g;-O0;-Wall"
+  - Flags for the clang compiler. Separated by ";" character.
+
+**"linker_flags**:-g"
+  - Flags for the clang linker. Separated by ";" character.
+
+Here is the list of flags you can pass to the tool:<br/><br/>
+**--help**<br/>
+  - Print this help message<br/>
+
+**--run**<br/>
+  - Run the program after compiling.<br/>
+  
+**--clean-logs**<br/>
+  - Clean the logs in the log folder.<br/>
+  
+**--clean-build**<br/>
+  - Clean all of the build files in the build folder.<br/>
+  
+**--clean**<br/>
+  - Clean both logs and build files.<br/>
+
+### Customizing with the default variables in the script
+You can edit the values of the default variables in the fbs.build.bat script. These variables give the tool a set of default values to use. Note that these are low precedence. They will be overwritten by command line args and the .conf file. When you open the fbs.build.bat file in an editor, close to the start of the file you should see the following lines (or very similiar to these) which you can edit:<br/><br/>
+SET "default_src_dir=%~dp0"<br/>
+SET "default_build_dir=%~dp0build\"<br/>
+SET "default_intermediate_dir=%default_build_dir%intermediate\"<br/>
+SET "default_output_name=program.exe"<br/>
+SET "default_log_dir=%forgescript_path%log\"<br/>
+SET "default_include_dirs="<br/>
+SET "default_lib_dirs="<br/>
+SET "default_libs="<br/>
+SET "default_compiler_flags=-g -O0 -Wall"<br/>
+SET "default_linker_flags=-g"<br/>
+
+NOTE: There are other variables that are named similar to these. Do NOT edit those. Only edit the ones that have the "default_" prefix and are located near the top of the file!
+
+## Example: Initializing an empty project and compiling
+Let's say we are planning on creating a new C++ Hello World project. Create a HelloWorld folder and put the fbs.build.bat file in there. For this example, we will assume that the HelloWorld folder resides in C:\Users\test\Projects\. We want our project's folder structure to look like this (do not create these folders yourself apart from the HelloWorld folder, we will let the tool to create them):
+
+[HelloWorld]<br/>
+    |<br/>
+    +--[build]--[intermediate]<br/>
+    |<br/>
+    +--[forgescript]--[log]<br/>
+    |<br/>
+    +--[libraries]<br/>
+    |<br/>
+    +--[src]<br/>
+
+The first thing we need to do, is run the fbs.build.bat file so that it initializes the tool (creates the forgescript folder and the .conf file in there). After running the program, our folder structure will look like this:
+
+[HelloWorld]<br/>
+    |<br/>
+    +--[forgescript]--fbs_build.conf<br/>
+    |<br/>
+    +--fbs.build.bat<br/>
+
+The next thing we need to do, is edit the .conf file to match our desired folder structure. Here is the content we want:
+
+src_dir:C:\Users\test\Projects\HelloWorld\src\ <br/>
+build_dir:C:\Users\test\Projects\HelloWorld\build\ <br/>
+intermediate_dir:C:\Users\test\Projects\HelloWorld\build\intermediate\ <br/>
+output_name:hello_world.exe <br/>
+log_dir:C:\Users\test\Projects\HelloWorld\forgescript\log\ <br/>
+include_dirs: <br/>
+lib_dirs:C:\Users\test\Projects\HelloWorld\libraries\ <br/>
+libs: <br/>
+compiler_flags:-g;-O0;-Wall <br/>
+linker_flags:-g <br/>
+
+Next we run the fbs.build.bat again. You should see that the tool creates all of the folders listed in the key:value pairs in the .conf file. It does not find any source files, so the tool will exit without compiling anything. Notice however, that the forgescript folder now contains an additional file called fbs_build.info. This file is used by the tool to save the latest build settings and it is used by the --clean/--clean-logs/--clean-build flags when logs/build files are cleaned. Next we will create a simple hello_world.cpp file in the "src" folder with the following contents:
+
