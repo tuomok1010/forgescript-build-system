@@ -5,8 +5,9 @@ Simple build system to create and build C++ projects. Windows only for now, Ubun
 This project has been made with the batch scripting language. It was originally planned to be quick few lines of code for compiling a simple program. However it bloated as I required (well, wanted) more features. The language itself can be fairly fragile and cryptic, and in terms of security far from the best choice. While I have done my best to keep the program bug-free, you should use it at your own risk. Here are some general guidelines to minimize any risks:
 1. Do not run this script as the administrator.
 2. Do not use external folders for forgescript logs/build files. Use subdirectories within your project folder instead.
-3. Do not use the script in an actual production environment. Use it for personal projects only.
-4. Follow the instructions/best practices in this document.
+3. Keep the script file within your project's folder, and run it from that folder.
+4. Do not use the script in an actual production environment. Use it for personal projects only.
+5. Follow the instructions/best practices in this document.
 
 ## Features
 * Fully customizable build settings.
