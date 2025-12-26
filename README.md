@@ -11,7 +11,7 @@ Windows-only (for now) • Powered by Clang++ • Incremental compilation • Si
 > A simple tool that started as "just a few lines to compile a program" — and grew into a feature-rich incremental build system using only Windows Batch scripting.
 ## Table of Contents
 
-- [Warning & Safety Guidelines](#warning--safety-guidelines)
+- [Warning & Safety Guidelines](#warning--safety-guidelines-)
 - [Features](#features)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
