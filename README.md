@@ -109,6 +109,9 @@ Here is the list of flags you can pass to the tool:<br/><br/>
 **--clean**<br/>
   - Clean both logs and build files.<br/>
 
+**--force**<br/>
+  - If build/log files are stored in a folder outside of the project folder, this flag must be used when cleaning the project.<br/>
+
 ### Customizing with the default variables in the script
 You can edit the values of the default variables in the fbs.build.bat script. These variables give the tool a set of default values to use. Note that these are low precedence. They will be overwritten by command line args and the .conf file. When you open the fbs.build.bat file in an editor, close to the start of the file you should see the following lines (or very similiar to these) which you can edit:<br/><br/>
 SET "default_src_dir=%~dp0"<br/>
