@@ -2,7 +2,11 @@
 Simple build system to create and build C++ projects. Windows only for now, Ubuntu release planned.
 
 ## A quick warning
-This project has been made with the batch scripting language. It was originally planned to be quick few lines of code for compiling a simple program. However it bloated as I required (well, wanted) more features. The language itself can be fairly fragile and cryptic, and in terms of security far from the best choice. While I have done my best to keep the program bug-free, you should use it at your own risk.
+This project has been made with the batch scripting language. It was originally planned to be quick few lines of code for compiling a simple program. However it bloated as I required (well, wanted) more features. The language itself can be fairly fragile and cryptic, and in terms of security far from the best choice. While I have done my best to keep the program bug-free, you should use it at your own risk. Here are some general guidelines to minimize any risks:
+1. Do not run this script as the administrator.
+2. Do not use external folders for forgescript logs/build files. Use subdirectories within your project folder instead.
+3. Do not use the script in an actual production environment. Use it for personal projects only.
+4. Follow the instructions/best practices in this document.
 
 ## Features
 * Fully customizable build settings.
@@ -121,37 +125,64 @@ NOTE: There are other variables that are named similar to these. Do NOT edit tho
 
 ## Example: Initializing an empty project and compiling
 Let's say we are planning on creating a new C++ Hello World project. Create a HelloWorld folder and put the fbs.build.bat file in there. For this example, we will assume that the HelloWorld folder resides in C:\Users\test\Projects\. We want our project's folder structure to look like this (do not create these folders yourself apart from the HelloWorld folder, we will let the tool to create them):
+```
+[HelloWorld]
+    |
+    +--[build]
+    |     |
+    |     +--[intermediate]
+    |
+    +--[forgescript]
+    |     |
+    |     +--[log]
+    |
+    +--[libraries1]
+    |
+    +--[libraries2]
+    |
+    +--[src]
+```
 
-[HelloWorld]<br/>
-    |<br/>
-    +--[build]--[intermediate]<br/>
-    |<br/>
-    +--[forgescript]--[log]<br/>
-    |<br/>
-    +--[libraries]<br/>
-    |<br/>
-    +--[src]<br/>
+The first thing we need to do, is run the fbs.build.bat file so that it initializes the tool (creates the forgescript folder and the .conf file in there). Do not click the script directly, as this will cause the CLI to close instantly after the script has finished running, preventing you from seeing the output. Open a CLI first, navigate to the script folder, and then run the script from the command line. After running the program, our folder structure will look like this:
 
-The first thing we need to do, is run the fbs.build.bat file so that it initializes the tool (creates the forgescript folder and the .conf file in there). After running the program, our folder structure will look like this:
-
-[HelloWorld]<br/>
-    |<br/>
-    +--[forgescript]--fbs_build.conf<br/>
-    |<br/>
-    +--fbs.build.bat<br/>
+```
+[HelloWorld]
+    |
+    +--[forgescript]
+    |     |
+    |     +--fbs_build.conf
+    |
+    +--fbs.build.bat
+```
 
 The next thing we need to do, is edit the .conf file to match our desired folder structure. Here is the content we want:
 
-src_dir:C:\Users\test\Projects\HelloWorld\src\ <br/>
-build_dir:C:\Users\test\Projects\HelloWorld\build\ <br/>
-intermediate_dir:C:\Users\test\Projects\HelloWorld\build\intermediate\ <br/>
-output_name:hello_world.exe <br/>
-log_dir:C:\Users\test\Projects\HelloWorld\forgescript\log\ <br/>
-include_dirs: <br/>
-lib_dirs:C:\Users\test\Projects\HelloWorld\libraries\ <br/>
-libs: <br/>
-compiler_flags:-g;-O0;-Wall <br/>
-linker_flags:-g <br/>
+```
+src_dir:C:\Users\test\Projects\HelloWorld\src\
+build_dir:C:\Users\test\Projects\HelloWorld\build\
+intermediate_dir:C:\Users\test\Projects\HelloWorld\build\intermediate\
+output_name:hello_world.exe
+log_dir:C:\Users\test\Projects\HelloWorld\forgescript\log\
+include_dirs:
+lib_dirs:C:\Users\test\Projects\HelloWorld\libraries1\;C:\Users\test\Projects\HelloWorld\libraries2\
+libs:
+compiler_flags:-g;-O0;-Wall
+linker_flags:-g
+```
 
-Next we run the fbs.build.bat again. You should see that the tool creates all of the folders listed in the key:value pairs in the .conf file. It does not find any source files, so the tool will exit without compiling anything. Notice however, that the forgescript folder now contains an additional file called fbs_build.info. This file is used by the tool to save the latest build settings and it is used by the --clean/--clean-logs/--clean-build flags when logs/build files are cleaned. Next we will create a simple hello_world.cpp file in the "src" folder with the following contents:
+Next we run the fbs.build.bat again. You should see that the tool creates all of the folders listed in the key:value pairs in the .conf file. It does not find any source files, so the tool will exit without compiling anything. Notice however, that the forgescript folder now contains an additional file called fbs_build.info. This file is used by the tool to save the latest build settings and it is used by the --clean/--clean-logs/--clean-build flags when logs/build files are cleaned. Next we will create a simple hello_world.cpp file in the "src" folder with the following content:
+
+```
+#include <iostream>
+
+int main(int argc, char *argv[])
+{
+  std::cout << "Hello World!" << std::endl;
+  return 0;
+}
+```
+
+After creating this file, run the fbs.build.bat script again. The program should compile succesfully. If there are any errors, check the output in the console, and also the log file which is located at the log_dir (in this example C:\Users\test\Projects\HelloWorld\forgescript\log\). 
+
+That's it! The most basic usage of this tool. More complicated examples coming sooner or later.
 
