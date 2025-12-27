@@ -25,7 +25,7 @@ Windows-only (for now) • Powered by Clang++ • Incremental compilation • Si
 - [Future Plans](#future-plans)
 - [License](#license)
 
-## Warning & Safety Guidelines ⚠️
+## Warning & Safety Guidelines
 
 This project is written in **Batch scripting**, which can be fragile and is not ideal for security-critical environments.
 
@@ -39,7 +39,7 @@ This project is written in **Batch scripting**, which can be fragile and is not 
 
 > The script has been carefully written and tested, but use at your own risk.
 
-## Features ✨
+## Features
 
 - Fully customizable build settings
 - **Incremental compilation** – only modified files are recompiled
@@ -61,7 +61,7 @@ Test it in a terminal:
 clang++ --version
 ```
 
-## Quick Start 🚀
+## Quick Start
 
 1. Copy `fbs.build.bat` into your project root folder
 2. Open a terminal in that folder and run:
