@@ -5,7 +5,7 @@ REM  Author: Tuomo Kanniainen
 REM  License: MIT (see LICENSE file)
 REM ==================================================================
 
-REM TODO Add log initialize to top, get rid of echoes
+REM TODO Add log initialize to top, get rid of echoes. Do not allow user to change log dir?
 
 SETLOCAL EnableDelayedExpansion
 ECHO [SCRIPT] Running from: %~f0
@@ -45,10 +45,10 @@ SET "default_build_dir=%~dp0build\"
 SET "default_intermediate_dir=%default_build_dir%intermediate\"
 SET "default_output_name=program.exe"
 SET "default_log_dir=%forgescript_path%log\"
-SET "default_include_dirs=%~dp0include w spaces\;%~dp0include2\"
-SET "default_lib_dirs=%~dp0libs w spaces\;%~dp0libs2\"
+SET "default_include_dirs=%~dp0include\"
+SET "default_lib_dirs=%~dp0libs\"
 SET "default_libs="
-SET "default_compiler_flags=-g -O0 -Wall"
+SET "default_compiler_flags=-g;-O0;-Wall"
 SET "default_linker_flags=-g"
 
 REM ===== CONFIG FILE (Mid precedence: can be overwritten by cmd args) =====
@@ -270,6 +270,8 @@ ECHO --clean-build
 ECHO    Clean all of the build files in the build folder.
 ECHO --clean
 ECHO    Clean both logs and build files.
+ECHO --force
+ECHO    If build/log files are stored in a folder outside of the project folder, this flag must be used when cleaning the project.
 ECHO.
 ECHO Full working example with the command line arguments (note that missing key:val pairs are drawn from defaults or .config file:
 ECHO   %~n0%~x0 "build_dir:C:\Users\my_user\Projects\MyProject\build\" output_name:hello_world.exe "compiler_flags:-g;-O0;-Wall"
@@ -399,7 +401,8 @@ REM remove leading space
 IF DEFINED src_files SET "src_files=!src_files:~1!"
 
 IF %file_count% EQU 0 (
-    CALL :LOG ERROR "No .cpp or .c files found in '%src_dir%'"
+    CALL :LOG INFO "No .cpp or .c files found in '%src_dir%', exiting."
+    EXIT /B 0
 )
 
 CALL :LOG INFO "Found %file_count% source file(s)"
@@ -473,10 +476,50 @@ FOR /F "tokens=1,* delims=;" %%A IN ("!list!") DO (
 GOTO :COLLECT_LIBS_LOOP
 :COLLECT_LIBS_LOOP_DONE
 
+REM Collect the compiler flags (replace ; with a space)
+SET "list=!compiler_flags!"
+SET "compiler_flags_with_spaces="
+:COLLECT_COMPILER_FLAGS_LOOP
+IF NOT DEFINED list GOTO :COLLECT_COMPILER_FLAGS_LOOP_DONE
+:: Split off the first path (%%A) and keep the rest (%%B)
+FOR /F "tokens=1,* delims=;" %%A IN ("!list!") DO (
+    :: compiler flags contain values that are not quoted
+    SET "clean_compiler_flag=%%A"
+
+    :: Append to the final argument list
+    SET "compiler_flags_with_spaces=!compiler_flags_with_spaces! !clean_compiler_flag!"
+
+    :: Prepare the remaining part for next iteration
+    SET "list=%%B"
+)
+GOTO :COLLECT_COMPILER_FLAGS_LOOP
+:COLLECT_COMPILER_FLAGS_LOOP_DONE
+
+REM Collect the linker flags (replace ; with a space)
+SET "list=!linker_flags!"
+SET "linker_flags_with_spaces="
+:COLLECT_LINKER_FLAGS_LOOP
+IF NOT DEFINED list GOTO :COLLECT_LINKER_FLAGS_LOOP_DONE
+:: Split off the first path (%%A) and keep the rest (%%B)
+FOR /F "tokens=1,* delims=;" %%A IN ("!list!") DO (
+    :: linker flags contain values that are not quoted
+    SET "clean_linker_flag=%%A"
+
+    :: Append to the final argument list
+    SET "linker_flags_with_spaces=!linker_flags_with_spaces! !clean_linker_flag!"
+
+    :: Prepare the remaining part for next iteration
+    SET "list=%%B"
+)
+GOTO :COLLECT_LINKER_FLAGS_LOOP
+:COLLECT_LINKER_FLAGS_LOOP_DONE
+
 REM Remove leading spaces
 IF DEFINED include_dirs_prefixed SET "include_dirs_prefixed=!include_dirs_prefixed:~1!"
 IF DEFINED lib_dirs_prefixed SET "lib_dirs_prefixed=!lib_dirs_prefixed:~1!"
 IF DEFINED libs_prefixed SET "libs_prefixed=!libs_prefixed:~1!"
+IF DEFINED compiler_flags_with_spaces SET "compiler_flags_with_spaces=!compiler_flags_with_spaces:~1!"
+IF DEFINED linker_flags_with_spaces SET "linker_flags_with_spaces=!linker_flags_with_spaces:~1!"
 
 REM === Compile sources (incremental) ===
 FOR %%F IN (!src_files!) DO (
@@ -494,7 +537,7 @@ FOR %%F IN (!src_files!) DO (
     IF "!needs_compile!"=="1" (
         CALL :LOG INFO "Compiling: !src!"
         clang++ ^
-	    !compiler_flags! ^
+	    !compiler_flags_with_spaces! ^
             !include_dirs_prefixed! ^
             -c "!src!" ^
             -o "!obj!" ^
@@ -513,7 +556,7 @@ REM === Link object files ===
 CALL :LOG INFO "Linking executable: %output_name%"
 
 clang++ ^
-    !linker_flags! ^
+    !linker_flags_with_spaces! ^
     "%intermediate_dir%*.obj" ^
     !lib_dirs_prefixed! ^
     !libs_prefixed! ^
