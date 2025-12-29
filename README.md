@@ -132,7 +132,7 @@ SET "default_output_name=program.exe"
 REM ... etc
 ```
 
-These are **lowest priority** — useful for templates.
+These are **lowest priority** — useful for templates or if you want to obscure absolute paths in a github repo.
 
 ## Command-Line Flags
 
