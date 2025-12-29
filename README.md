@@ -48,7 +48,7 @@ This project is written in **Batch scripting**, which can be fragile and is not 
 - Support for custom include paths, library paths, and linked libraries
 - Clean commands (`--clean`, `--clean-build`, `--clean-logs`)
 - Optional auto-run after successful build
-- Uses **Clang++** for excellent diagnostics and modern C++ support
+- Uses **clang/clang++/clang-cl** for excellent diagnostics and modern C++ support
 
 ## Prerequisites
 
