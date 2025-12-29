@@ -1,7 +1,7 @@
 # forgescript-build-system 🛠️
 
 **A lightweight, fully customizable C++ build system written in pure Batch script**  
-Windows-only (for now) • Powered by Clang++ • Incremental compilation • Simple configuration
+Windows-only (for now) • Powered by Clang • Incremental compilation • Simple configuration
 
 [![Windows](https://img.shields.io/badge/platform-Windows-blue.svg)](https://www.microsoft.com/windows)
 [![Clang](https://img.shields.io/badge/compiler-Clang-orange.svg)](https://clang.llvm.org/)
