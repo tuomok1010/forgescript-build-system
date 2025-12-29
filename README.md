@@ -53,7 +53,7 @@ This project is written in **Batch scripting**, which can be fragile and is not 
 ## Prerequisites
 
 - **Windows** operating system
-- **Clang++** installed and added to your `PATH`  
+- **clang/clang++/clang-cl** installed and added to your `PATH`  
   (e.g., via LLVM installer or Visual Studio Build Tools with Clang)
 
 Test it in a terminal:
@@ -92,18 +92,19 @@ Settings follow this precedence (high to low):
 
 Located in `forgescript/fbs_build.conf` after first run.
 
-| Key                  | Example Value                                      | Description |
-|----------------------|----------------------------------------------------|-------------|
-| `src_dir`            | `C:\Users\me\Projects\MyApp\src\`                  | Source directory (recursive) |
-| `build_dir`          | `C:\Users\me\Projects\MyApp\build\`                | Output directory for executables |
-| `intermediate_dir`   | `C:\Users\me\Projects\MyApp\build\intermediate\`   | Object file directory |
-| `output_name`        | `myapp.exe`                                        | Executable name |
-| `log_dir`            | `C:\Users\me\Projects\MyApp\forgescript\log\`      | Log storage |
+| Key                  | Example Value                                      | Description                       |
+|----------------------|----------------------------------------------------|-----------------------------------|
+| `compiler`           | `clang++`                                          | Compiler (clang/clang++/clang-cl  |
+| `src_dir`            | `C:\Users\me\Projects\MyApp\src\`                  | Source directory (recursive)      |
+| `build_dir`          | `C:\Users\me\Projects\MyApp\build\`                | Output directory for executables  |
+| `intermediate_dir`   | `C:\Users\me\Projects\MyApp\build\intermediate\`   | Object file directory             |
+| `output_name`        | `myapp.exe`                                        | Executable name                   |
+| `log_dir`            | `C:\Users\me\Projects\MyApp\forgescript\log\`      | Log storage                       |
 | `include_dirs`       | `C:\path\include1\;C:\path\include2\`              | Semicolon-separated include paths |
 | `lib_dirs`           | `C:\path\libs\;C:\other\libs\`                     | Semicolon-separated library paths |
-| `libs`               | `glfw3;opengl32;gdi32;user32`                      | Semicolon-separated libraries |
-| `compiler_flags`     | `-g;-O0;-Wall`                                     | Semicolon-separated Clang flags |
-| `linker_flags`       | `-g`                                               | Semicolon-separated linker flags |
+| `libs`               | `glfw3;opengl32;gdi32;user32`                      | Semicolon-separated libraries     |
+| `compiler_flags`     | `-g;-O0;-Wall`                                     | Semicolon-separated Clang flags   |
+| `linker_flags`       | `-Wl,--verbose;-shared`                            | Semicolon-separated linker flags  |
 
 ### Via Command-Line Arguments
 
@@ -117,13 +118,14 @@ fbs.build.bat ^
   "libs:glfw3;opengl32"
 ```
 
-Quote any value containing spaces or semicolons.
+Quote any key:value containing spaces or semicolons.
 
 ### Via Default Variables in Script
 
 Edit the `default_*` variables near the top of `fbs.build.bat`:
 
 ```bat
+SET "default_compiler=clang++"
 SET "default_src_dir=%~dp0src\"
 SET "default_build_dir=%~dp0build\"
 SET "default_output_name=program.exe"
@@ -142,6 +144,24 @@ These are **lowest priority** — useful for templates.
 | `--clean-build`  | Delete all build artifacts (`build/` folder)     |
 | `--clean`        | Clean both logs and build                        |
 | `--force`        | Required when cleaning external build/log paths  |
+
+## Example: Building an executable (clang-cl)
+(Work in progress)
+
+## Example: Building a dynamic library (clang-cl
+(Work in progress)
+
+## Example: Building a static library (clang-cl
+(Work in progress)
+
+## Example: Building an executable (clang++)
+(Work in progress)
+
+## Example: Building a dynamic library (clang++
+(Work in progress)
+
+## Example: Building a static library (clang++
+(Work in progress)
 
 ## Example: Hello World Project
 
