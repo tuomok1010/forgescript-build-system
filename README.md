@@ -248,6 +248,15 @@ HelloWorld/
 
 Check `forgescript/log/` for detailed output on errors.
 
+## .gitignore
+You might want to ignore some ForgeScript files in your git repos. Here is an example what you could append to your .gitignore file:
+```
+# ForgeScript
+forgescript/log
+*.info
+*.conf
+```
+
 ## Known Limitations
 
 - Windows-only (Ubuntu support planned)
