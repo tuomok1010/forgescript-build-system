@@ -53,7 +53,7 @@ This project is written in **Batch scripting**, which can be fragile and is not 
 - Automatic directory creation
 - Support for custom include paths, library paths, and linked libraries
 - Clean commands (`--clean`, `--clean-build`, `--clean-logs`)
-- Optional auto-run after successful build
+- Optional auto-run after successful build (Work in progress)
 - Uses **clang/clang++/clang-cl** for excellent diagnostics and modern C++ support
 
 ## Prerequisites
@@ -261,6 +261,7 @@ Check `forgescript/log/` for detailed output on errors.
 - More build modes (Debug/Release)
 - Dependency scanning for headers
 - Better error handling and user feedback
+- Optional auto-run after successful build
 
 ## License
 
