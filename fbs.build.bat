@@ -26,6 +26,7 @@ REM Create forgescript directory and conf file
 IF NOT EXIST "%forgescript_path%" (
    ECHO No forgescript folder found. Initializing forgescript. Run %~n0%~x0 --help for help.
    MKDIR "%forgescript_path%" 2>NUL
+   ECHO compiler:> "%forgescript_path%%forgescript_build_conf_file_name%"
    ECHO src_dir:> "%forgescript_path%%forgescript_build_conf_file_name%"
    ECHO build_dir:>> "%forgescript_path%%forgescript_build_conf_file_name%"
    ECHO intermediate_dir:>>"%forgescript_path%%forgescript_build_conf_file_name%"
@@ -40,18 +41,21 @@ IF NOT EXIST "%forgescript_path%" (
 )
 
 REM ===== DEFAULT (Low  precedence: can be overwritten by CUSTOM, config file, or cmd args) =====
+:: NOTE: These can be edited
+SET "default_compiler=clang++"
 SET "default_src_dir=%~dp0"
 SET "default_build_dir=%~dp0build\"
 SET "default_intermediate_dir=%default_build_dir%intermediate\"
 SET "default_output_name=program.exe"
 SET "default_log_dir=%forgescript_path%log\"
-SET "default_include_dirs=%~dp0include\"
-SET "default_lib_dirs=%~dp0libs\"
+SET "default_include_dirs="
+SET "default_lib_dirs="
 SET "default_libs="
-SET "default_compiler_flags=-g;-O0;-Wall"
-SET "default_linker_flags=-g"
+SET "default_compiler_flags="
+SET "default_linker_flags="
 
 REM ===== CONFIG FILE (Mid precedence: can be overwritten by cmd args) =====
+SET "conf_compiler="
 SET "conf_src_dir="
 SET "conf_build_dir="
 SET "conf_intermediate_dir="
@@ -64,6 +68,7 @@ SET "conf_compiler_flags="
 SET "conf_linker_flags="
 
 REM ===== CMD (High precedence: cannot be overwritten) =====
+SET "cmd_compiler="
 SET "cmd_src_dir="
 SET "cmd_build_dir="
 SET "cmd_intermediate_dir="
@@ -114,6 +119,7 @@ CALL :STRIP_QUOTES_VAR cmd_arg_key
 CALL :STRIP_QUOTES_VAR cmd_arg_val
 
 ::Map key to conf variable
+IF /I "!cmd_arg_key!"=="compiler"         SET "cmd_compiler=!cmd_arg_val!"
 IF /I "!cmd_arg_key!"=="src_dir"          SET "cmd_src_dir=!cmd_arg_val!"
 IF /I "!cmd_arg_key!"=="build_dir"        SET "cmd_build_dir=!cmd_arg_val!"
 IF /I "!cmd_arg_key!"=="intermediate_dir" SET "cmd_intermediate_dir=!cmd_arg_val!"
@@ -129,6 +135,7 @@ GOTO :PARSE_ARGS
 :ARGS_DONE
 
 REM === Set variables to cmd var > conf var > default var ===
+CALL :SETOR compiler            cmd_compiler            conf_compiler            default_compiler
 CALL :SETOR src_dir             cmd_src_dir             conf_src_dir             default_src_dir
 CALL :SETOR build_dir           cmd_build_dir           conf_build_dir           default_build_dir
 CALL :SETOR intermediate_dir    cmd_intermediate_dir    conf_intermediate_dir    default_intermediate_dir
@@ -190,7 +197,8 @@ GOTO :CREATE_LIB_DIRS_LOOP
 :CREATE_LIB_DIRS_LOOP_DONE
 
 REM === Save latest build config to info file(used when cleaning build files/logs ===
-ECHO src_dir:%src_dir%> "%forgescript_path%%forgescript_build_info_file_name%"
+ECHO compiler:%compiler%> "%forgescript_path%%forgescript_build_info_file_name%"
+ECHO src_dir:%src_dir%>> "%forgescript_path%%forgescript_build_info_file_name%"
 ECHO build_dir:%build_dir%>> "%forgescript_path%%forgescript_build_info_file_name%"
 ECHO intermediate_dir:%intermediate_dir%>> "%forgescript_path%%forgescript_build_info_file_name%"
 ECHO output_name:%output_name%>> "%forgescript_path%%forgescript_build_info_file_name%"
@@ -207,6 +215,7 @@ REM === Initialize log ===
     ECHO ========================================
     ECHO  BUILD STARTED: %DATE% %TIME%
     ECHO  Script: %~f0
+    ECHO  Compiler: %compiler%
     ECHO  src_dir: %src_dir%
     ECHO  build_dir: %build_dir%
     ECHO  intermediate_dir: %intermediate_dir%
@@ -228,6 +237,9 @@ REM == Print help message ===
 ECHO.
 ECHO %~n0%~x0 [KEY:VAL ...] [--FLAG ...]
 ECHO [KEY]:
+ECHO compiler:
+ECHO    Compiler to use. Must be one of the following: clang++, clang, clang-cl
+ECHO    Example: compiler:clang++
 ECHO src_dir
 ECHO    Directory path to search for source files. Subdirectories will be searched too. Should be enclosed in quotes.
 ECHO    Example: "src_dir:C:\Users\my_user\Projects\MyProject\src\"
@@ -254,10 +266,12 @@ ECHO    Libraries to link to the program. Should be enclosed in quotes and separ
 ECHO    Example: "libs:glfw3;opengl32;gdi32;user32"
 ECHO compiler_flags
 ECHO    Flags for the clang compiler. Should be enclosed in quotes and separated by a ";" symbol.
-ECHO    Example: "compiler_flags:-g;-O0;-Wall"
+ECHO    Example(clang/clang++): "compiler_flags:-g;-O0;-Wall"
+ECHO    Example(clang-cl): "compiler_flags:/Zi;/Od;/Wall"
 ECHO linker_flags
 ECHO    Flags for the clang linker. Should be enclosed in quotes and separated by a ";" symbol.
-ECHO    Example: "linker_flags:-g"
+ECHO    Example(clang/clang++): "linker_flags:-Wl,--verbose;-shared"
+ECHO    EXAMPLE(clang-cl): "linker_flags: /SUBSYSTEM:CONSOLE;/DLL"
 ECHO.
 ECHO [FLAG]:
 ECHO --help
@@ -282,6 +296,7 @@ ECHO   It is recommended to use the %forgescript_build_conf_file_name% file to c
 ECHO   fbs_build.conf file location: %forgescript_path%%forgescript_build_conf_file_name%
 ECHO.
 ECHO Example .conf file (note that quotes are not required, unlike with the cmd line args):
+ECHO compiler:clang++
 ECHO src_dir:C:\Users\my_user\Projects\MyProject\src\
 ECHO build_dir:C:\Users\my_user\Projects\MyProject\build\
 ECHO intermediate_dir:C:\Users\my_user\Projects\MyProject\build\intermediate\
@@ -291,9 +306,10 @@ ECHO include_dirs:C:\Users\my_user\Projects\MyProject\include\;C:\Users\my_user\
 ECHO lib_dirs:C:\Users\my_user\Projects\MyProject\libraries\
 ECHO libs:glfw3;opengl32;gdi32;user32
 ECHO compiler_flags:-g;-O0;-Wall
-ECHO linker_flags:-g
+ECHO linker_flags:-Wl,--verbose;-shared
 ECHO.
 ECHO in addition to the conf file and command line arguments, you can also edit the default variable values in the %~n0%~x0 script. These variables are:
+ECHO default_compiler
 ECHO default_src_dir
 ECHO default_build_dir
 ECHO default_intermediate_dir
@@ -301,12 +317,14 @@ ECHO default_output_name
 ECHO default_log_dir
 ECHO default_include_dirs
 ECHO default_lib_dirs
-ECHO default_libs=
-ECHO default_compiler_flags=
+ECHO default_libs
+ECHO default_compiler_flags
 ECHO default_linker_flags
 ECHO.
 ECHO IMPORTANT: configuration settings have precedences: HIGH - command line arguments, MID - config file, LOW - defaults in script
 ECHO Higher precedence values overwrite lower precedence values!
+ECHO.
+ECHO User does not have to worry about adding -L, -l, /LIBPATH: linker flags with the paths. The script handles it.
 GOTO :EOF
 
 REM === Clean the build directories ===
@@ -423,8 +441,13 @@ FOR /F "tokens=1,* delims=;" %%A IN ("!list!") DO (
     :: Quote the path properly
     SET "quoted_path="!clean_path!""
 
-    :: Append to the final argument list
-    SET "include_dirs_prefixed=!include_dirs_prefixed! -I!quoted_path!"
+    IF /I "!compiler!"=="clang-cl" (
+       REM Append  MSVC-style prefix(/I)
+       SET "include_dirs_prefixed=!include_dirs_prefixed! /I!quoted_path!"
+    ) ELSE (
+       :: Append GNU-style prefix(-I)
+       SET "include_dirs_prefixed=!include_dirs_prefixed! -I!quoted_path!"    
+    )
 
     :: Prepare the remaining part for next iteration
     SET "list=%%B"
@@ -448,8 +471,13 @@ FOR /F "tokens=1,* delims=;" %%A IN ("!list!") DO (
     :: Quote the path properly
     SET "quoted_path="!clean_path!""
 
-    :: Append to the final argument list
-    SET "lib_dirs_prefixed=!lib_dirs_prefixed! -L!quoted_path!"
+    IF /I "!compiler!"=="clang-cl" (
+       REM Append  MSVC-style prefix(/LIBPATH:)
+       SET "lib_dirs_prefixed=!lib_dirs_prefixed! /LIBPATH:!quoted_path!"
+    ) ELSE (
+       :: Append GNU-style prefix(-L)
+       SET "lib_dirs_prefixed=!lib_dirs_prefixed! -L!quoted_path!"
+    )
 
     :: Prepare the remaining part for next iteration
     SET "list=%%B"
@@ -467,8 +495,13 @@ FOR /F "tokens=1,* delims=;" %%A IN ("!list!") DO (
     :: libs contain values that are not quoted
     SET "clean_lib=%%A"
 
-    :: Append to the final argument list
-    SET "libs_prefixed=!libs_prefixed! -l!clean_lib!"
+    IF /I "!compiler!"=="clang-cl" (
+       REM Append  MSVC-style postfix(.lib)
+       SET "libs_prefixed=!libs_prefixed! !clean_lib!.lib"
+    ) ELSE (
+       :: Append GNU-style prefix(-L)
+       SET "libs_prefixed=!libs_prefixed! -l!clean_lib!"
+    )
 
     :: Prepare the remaining part for next iteration
     SET "list=%%B"
@@ -478,7 +511,7 @@ GOTO :COLLECT_LIBS_LOOP
 
 REM Collect the compiler flags (replace ; with a space)
 SET "list=!compiler_flags!"
-SET "compiler_flags_with_spaces="
+SET "compiler_flags_parsed="
 :COLLECT_COMPILER_FLAGS_LOOP
 IF NOT DEFINED list GOTO :COLLECT_COMPILER_FLAGS_LOOP_DONE
 :: Split off the first path (%%A) and keep the rest (%%B)
@@ -487,7 +520,7 @@ FOR /F "tokens=1,* delims=;" %%A IN ("!list!") DO (
     SET "clean_compiler_flag=%%A"
 
     :: Append to the final argument list
-    SET "compiler_flags_with_spaces=!compiler_flags_with_spaces! !clean_compiler_flag!"
+    SET "compiler_flags_parsed=!compiler_flags_parsed! !clean_compiler_flag!"
 
     :: Prepare the remaining part for next iteration
     SET "list=%%B"
@@ -497,7 +530,7 @@ GOTO :COLLECT_COMPILER_FLAGS_LOOP
 
 REM Collect the linker flags (replace ; with a space)
 SET "list=!linker_flags!"
-SET "linker_flags_with_spaces="
+SET "linker_flags_parsed="
 :COLLECT_LINKER_FLAGS_LOOP
 IF NOT DEFINED list GOTO :COLLECT_LINKER_FLAGS_LOOP_DONE
 :: Split off the first path (%%A) and keep the rest (%%B)
@@ -506,7 +539,7 @@ FOR /F "tokens=1,* delims=;" %%A IN ("!list!") DO (
     SET "clean_linker_flag=%%A"
 
     :: Append to the final argument list
-    SET "linker_flags_with_spaces=!linker_flags_with_spaces! !clean_linker_flag!"
+    SET "linker_flags_parsed=!linker_flags_parsed! !clean_linker_flag!"
 
     :: Prepare the remaining part for next iteration
     SET "list=%%B"
@@ -518,8 +551,8 @@ REM Remove leading spaces
 IF DEFINED include_dirs_prefixed SET "include_dirs_prefixed=!include_dirs_prefixed:~1!"
 IF DEFINED lib_dirs_prefixed SET "lib_dirs_prefixed=!lib_dirs_prefixed:~1!"
 IF DEFINED libs_prefixed SET "libs_prefixed=!libs_prefixed:~1!"
-IF DEFINED compiler_flags_with_spaces SET "compiler_flags_with_spaces=!compiler_flags_with_spaces:~1!"
-IF DEFINED linker_flags_with_spaces SET "linker_flags_with_spaces=!linker_flags_with_spaces:~1!"
+IF DEFINED compiler_flags_parsed SET "compiler_flags_parsed=!compiler_flags_parsed:~1!"
+IF DEFINED linker_flags_parsed SET "linker_flags_parsed=!linker_flags_parsed:~1!"
 
 REM === Compile sources (incremental) ===
 FOR %%F IN (!src_files!) DO (
@@ -536,12 +569,12 @@ FOR %%F IN (!src_files!) DO (
 
     IF "!needs_compile!"=="1" (
         CALL :LOG INFO "Compiling: !src!"
-        clang++ ^
-	    !compiler_flags_with_spaces! ^
-            !include_dirs_prefixed! ^
-            -c "!src!" ^
-            -o "!obj!" ^
-            2>> "%log_dir%%forgescript_log_file_name%"
+
+        IF /I "!compiler!"=="clang-cl" (
+            !compiler! !compiler_flags_parsed! !include_dirs_prefixed! /c "!src!" /Fo"!obj!" 2>> "%log_dir%%forgescript_log_file_name%"
+        ) ELSE (
+            !compiler! !compiler_flags_parsed! !include_dirs_prefixed! -c "!src!" -o "!obj!" 2>> "%log_dir%%forgescript_log_file_name%"
+        )
 
         IF ERRORLEVEL 1 (
             CALL :LOG ERROR "Compilation failed for: !src!"
@@ -555,13 +588,22 @@ FOR %%F IN (!src_files!) DO (
 REM === Link object files ===
 CALL :LOG INFO "Linking executable: %output_name%"
 
-clang++ ^
-    !linker_flags_with_spaces! ^
-    "%intermediate_dir%*.obj" ^
-    !lib_dirs_prefixed! ^
-    !libs_prefixed! ^
-    -o "%build_dir%%output_name%" ^
-    2>> "%log_dir%%forgescript_log_file_name%"
+:: Collect .obj files
+SET "obj_files=%intermediate_dir%*.obj"
+
+IF /I "!compiler!"=="clang-cl" (	
+    !compiler! ^
+        /Fe"%build_dir%%output_name%" ^
+	"%obj_files%" ^
+	/link !linker_flags_parsed! !lib_dirs_prefixed! !libs_prefixed! ^
+	2>> "%log_dir%%forgescript_log_file_name%"
+) ELSE (
+    !compiler! ^
+        -o "%build_dir%%output_name%" ^
+	"%obj_files%" ^
+	!linker_flags_parsed! !lib_dirs_prefixed! !libs_prefixed! ^
+	2>> "%log_dir%%forgescript_log_file_name%"
+)
 
 IF ERRORLEVEL 1 (
     CALL :LOG ERROR "Linking failed! See "%log_dir%%forgescript_log_file_name%" for details"
