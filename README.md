@@ -48,6 +48,7 @@ This project is written in **Batch scripting**, which can be fragile and is not 
 ## Features
 
 - Fully customizable build settings
+- Supports multiple build scripts/configs per project (for example debug, release...)
 - **Incremental compilation** – only modified files are recompiled
 - Detailed logging with timestamps
 - Automatic directory creation
@@ -74,8 +75,8 @@ clang++ --version
    ```bat
    fbs.build.bat
    ```
-3. The script will create a `forgescript` folder with `fbs_build.conf`
-4. Edit `fbs_build.conf` to match your project structure (see below)
+3. The script will create a `forgescript` folder with `[script_name].conf`
+4. Edit `[script_name].conf` to match your project structure (see below)
 5. Add your `.cpp` files to the source directory
 6. Run `fbs.build.bat` again — your project will compile!
 
@@ -89,14 +90,14 @@ fbs.build.bat --help
 Settings follow this precedence (high to low):
 
 **High** → Command-line arguments  
-**Medium** → `forgescript/fbs_build.conf`  
+**Medium** → `forgescript/[script_name].conf`  
 **Low** → Default values in the script
 
 > **Tip:** Use **absolute paths** for maximum reliability.
 
-### Via `fbs_build.conf` (Recommended)
+### Via `[script_name].conf` (Recommended)
 
-Located in `forgescript/fbs_build.conf` after first run.
+Located in `forgescript/[script_name].conf` after first run.
 
 | Key                  | Example Value                                      | Description                       |
 |----------------------|----------------------------------------------------|-----------------------------------|
