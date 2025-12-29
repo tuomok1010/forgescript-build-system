@@ -258,7 +258,6 @@ Check `forgescript/log/` for detailed output on errors.
 ## Future Plans
 
 - Ubuntu/Linux support
-- More build modes (Debug/Release)
 - Dependency scanning for headers
 - Better error handling and user feedback
 - Optional auto-run after successful build
