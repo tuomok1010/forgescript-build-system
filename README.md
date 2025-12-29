@@ -148,19 +148,19 @@ These are **lowest priority** — useful for templates or if you want to obscure
 ## Example: Building an executable (clang-cl)
 (Work in progress)
 
-## Example: Building a dynamic library (clang-cl
+## Example: Building a dynamic library (clang-cl)
 (Work in progress)
 
-## Example: Building a static library (clang-cl
+## Example: Building a static library (clang-cl)
 (Work in progress)
 
 ## Example: Building an executable (clang++)
 (Work in progress)
 
-## Example: Building a dynamic library (clang++
+## Example: Building a shared library (clang++)
 (Work in progress)
 
-## Example: Building a static library (clang++
+## Example: Building a static library (clang++)
 (Work in progress)
 
 ## Example: Hello World Project
