@@ -20,6 +20,12 @@ Windows-only (for now) • Powered by Clang • Incremental compilation • Simp
   - [Via Command-Line Arguments](#via-command-line-arguments)
   - [Via Default Variables in Script](#via-default-variables-in-script)
 - [Command-Line Flags](#command-line-flags)
+- [Example config: Executable (clang-cl)](#example-config-executable-clang-cl)
+- [Example config: Dynamic library (clang-cl)](#example-config-dynamic-library-clang-cl)
+- [Example config: Static library (clang-cl)](#example-config-static-library-clang-cl)
+- [Example config: Executable (clang++)](#example-config-executable-clang++)
+- [Example config: Shared library (clang++)](#example-config-shared-library-clang++)
+- [Example config: Static library (clang++)](#example-config-static-library-clang++)
 - [Example: Hello World Project](#example-hello-world-project)
 - [Known Limitations](#known-limitations)
 - [Future Plans](#future-plans)
@@ -145,23 +151,71 @@ These are **lowest priority** — useful for templates or if you want to obscure
 | `--clean`        | Clean both logs and build                        |
 | `--force`        | Required when cleaning external build/log paths  |
 
-## Example: Building an executable (clang-cl)
-(Work in progress)
+## Example config: Executable (clang-cl)
+```
+compiler:clang-cl
+output_name:myapp.exe
+compiler_flags:/Zi;/Od;/Wall;/W4
+linker_flags:/SUBSYSTEM:CONSOLE;/VERBOSE
+include_dirs:C:\libs\include\;C:\libs\include2\
+lib_dirs:C:\libs\win64\;C:\libs\extra\
+libs:ws2_32;user32;gdi32;opengl32
+```
 
-## Example: Building a dynamic library (clang-cl)
-(Work in progress)
+## Example config: Dynamic library (clang-cl)
+```
+compiler:clang-cl
+output_name:firelink.dll
+compiler_flags:/Zi;/O2;/Wall
+linker_flags:/DLL;/VERBOSE;/EXPORT:initializeLibrary;/EXPORT:shutdownLibrary
+include_dirs:include\;external\asio\include\;external\spdlog\include\
+lib_dirs:lib\win64\;external\libs\
+libs:ws2_32;iphlpapi
+```
 
-## Example: Building a static library (clang-cl)
-(Work in progress)
+## Example config: Static library (clang-cl)
+```
+compiler:clang-cl
+output_name:firelink.lib
+compiler_flags:/Zi;/O2;/MT;/Wall
+linker_flags:/VERBOSE
+include_dirs:include\;third_party\headers\;third_party\utils\
+lib_dirs:lib\static\;external\static_libs\
+libs:ws2_32
+```
 
-## Example: Building an executable (clang++)
-(Work in progress)
+## Example config: Executable (clang++)
+```
+compiler:clang++
+output_name:myapp
+compiler_flags:-g;-O0;-Wall;-Wextra;-std=c++20
+linker_flags:-Wl,--verbose;-pthread
+include_dirs:/usr/local/include/;/opt/libs/include/;./include/
+lib_dirs:/usr/local/lib/;/opt/libs/lib/
+libs:pthread;dl;m
+```
 
-## Example: Building a shared library (clang++)
-(Work in progress)
+## Example config: Shared library (clang++)
+```
+compiler:clang++
+output_name:libfirelink.so
+compiler_flags:-g;-O2;-Wall;-fPIC;-std=c++20
+linker_flags:-shared;-Wl,--verbose;-Wl,-soname,libfirelink.so.1
+include_dirs:include/;external/boost/include/;external/fmt/include/
+lib_dirs:/usr/local/lib/;external/lib/
+libs: pthread;dl
+```
 
-## Example: Building a static library (clang++)
-(Work in progress)
+## Example config: Static library (clang++)
+```
+compiler:clang++
+output_name:libfirelink.a
+compiler_flags:-g;-O2;-Wall;-fPIC;-std=c++20
+linker_flags:-Wl,--verbose
+include_dirs:include/;third_party/json/include/;third_party/logger/include/
+lib_dirs:/usr/lib/;external/static/
+libs: pthread
+```
 
 ## Example: Hello World Project
 
