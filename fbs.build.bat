@@ -17,26 +17,27 @@ REM ===== Create a timestamp =====
 CALL :MAKETIMESTAMP timestamp
 
 REM IMPORTANT: DO NOT EDIT THESE or it can lead to stale/lost data when cleaning up project
-SET "forgescript_path=%~dp0forgescript\"
-SET "forgescript_log_file_name=forgescript_build_%timestamp%.log"
-SET "forgescript_build_info_file_name=fbs_build.info"
-SET "forgescript_build_conf_file_name=fbs_build.conf"
+SET "fbs_path=%~dp0forgescript\"
+SET "fbs_log_file_name=forgescript_build_%timestamp%.log"
+SET "fbs_script_name=%~n0"
+SET "fbs_config_file_name=%fbs_script_name%.conf"
+SET "fbs_info_file_name=%fbs_script_name%.info"
 
 REM Create forgescript directory and conf file
-IF NOT EXIST "%forgescript_path%" (
+IF NOT EXIST "%fbs_path%" (
    ECHO No forgescript folder found. Initializing forgescript. Run %~n0%~x0 --help for help.
-   MKDIR "%forgescript_path%" 2>NUL
-   ECHO compiler:> "%forgescript_path%%forgescript_build_conf_file_name%"
-   ECHO src_dir:> "%forgescript_path%%forgescript_build_conf_file_name%"
-   ECHO build_dir:>> "%forgescript_path%%forgescript_build_conf_file_name%"
-   ECHO intermediate_dir:>>"%forgescript_path%%forgescript_build_conf_file_name%"
-   ECHO output_name:>> "%forgescript_path%%forgescript_build_conf_file_name%"
-   ECHO log_dir:>> "%forgescript_path%%forgescript_build_conf_file_name%"
-   ECHO include_dirs:>> "%forgescript_path%%forgescript_build_conf_file_name%"
-   ECHO lib_dirs:>> "%forgescript_path%%forgescript_build_conf_file_name%"
-   ECHO libs:>> "%forgescript_path%%forgescript_build_conf_file_name%"
-   ECHO compiler_flags:>> "%forgescript_path%%forgescript_build_conf_file_name%"
-   ECHO linker_flags:>> "%forgescript_path%%forgescript_build_conf_file_name%"
+   MKDIR "%fbs_path%" 2>NUL
+   ECHO compiler:> "%fbs_path%%fbs_config_file_name%"
+   ECHO src_dir:> "%fbs_path%%fbs_config_file_name%"
+   ECHO build_dir:>> "%fbs_path%%fbs_config_file_name%"
+   ECHO intermediate_dir:>>"%fbs_path%%fbs_config_file_name%"
+   ECHO output_name:>> "%fbs_path%%fbs_config_file_name%"
+   ECHO log_dir:>> "%fbs_path%%fbs_config_file_name%"
+   ECHO include_dirs:>> "%fbs_path%%fbs_config_file_name%"
+   ECHO lib_dirs:>> "%fbs_path%%fbs_config_file_name%"
+   ECHO libs:>> "%fbs_path%%fbs_config_file_name%"
+   ECHO compiler_flags:>> "%fbs_path%%fbs_config_file_name%"
+   ECHO linker_flags:>> "%fbs_path%%fbs_config_file_name%"
    EXIT /B 0
 )
 
@@ -47,7 +48,7 @@ SET "default_src_dir=%~dp0"
 SET "default_build_dir=%~dp0build\"
 SET "default_intermediate_dir=%default_build_dir%intermediate\"
 SET "default_output_name=program.exe"
-SET "default_log_dir=%forgescript_path%log\"
+SET "default_log_dir=%fbs_path%log\"
 SET "default_include_dirs="
 SET "default_lib_dirs="
 SET "default_libs="
@@ -81,7 +82,7 @@ SET "cmd_compiler_flags="
 SET "cmd_linker_flags="
 
 REM === Parse config file ===
-CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%forgescript_path%%forgescript_build_conf_file_name%" PROCESS_CONF_KEY_VAL
+CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%fbs_path%%fbs_config_file_name%" PROCESS_CONF_KEY_VAL
 
 REM === Parse command-line arguments ===
 :PARSE_ARGS
@@ -197,17 +198,17 @@ GOTO :CREATE_LIB_DIRS_LOOP
 :CREATE_LIB_DIRS_LOOP_DONE
 
 REM === Save latest build config to info file(used when cleaning build files/logs ===
-ECHO compiler:%compiler%> "%forgescript_path%%forgescript_build_info_file_name%"
-ECHO src_dir:%src_dir%>> "%forgescript_path%%forgescript_build_info_file_name%"
-ECHO build_dir:%build_dir%>> "%forgescript_path%%forgescript_build_info_file_name%"
-ECHO intermediate_dir:%intermediate_dir%>> "%forgescript_path%%forgescript_build_info_file_name%"
-ECHO output_name:%output_name%>> "%forgescript_path%%forgescript_build_info_file_name%"
-ECHO log_dir:%log_dir%>> "%forgescript_path%%forgescript_build_info_file_name%"
-ECHO include_dirs:%include_dirs%>> "%forgescript_path%%forgescript_build_info_file_name%"
-ECHO lib_dirs:%lib_dirs%>> "%forgescript_path%%forgescript_build_info_file_name%"
-ECHO libs:%libs%>> "%forgescript_path%%forgescript_build_info_file_name%"
-ECHO compiler_flags:%compiler_flags%>> "%forgescript_path%%forgescript_build_info_file_name%"
-ECHO linker_flags:%linker_flags%>> "%forgescript_path%%forgescript_build_info_file_name%"
+ECHO compiler:%compiler%> "%fbs_path%%fbs_info_file_name%"
+ECHO src_dir:%src_dir%>> "%fbs_path%%fbs_info_file_name%"
+ECHO build_dir:%build_dir%>> "%fbs_path%%fbs_info_file_name%"
+ECHO intermediate_dir:%intermediate_dir%>> "%fbs_path%%fbs_info_file_name%"
+ECHO output_name:%output_name%>> "%fbs_path%%fbs_info_file_name%"
+ECHO log_dir:%log_dir%>> "%fbs_path%%fbs_info_file_name%"
+ECHO include_dirs:%include_dirs%>> "%fbs_path%%fbs_info_file_name%"
+ECHO lib_dirs:%lib_dirs%>> "%fbs_path%%fbs_info_file_name%"
+ECHO libs:%libs%>> "%fbs_path%%fbs_info_file_name%"
+ECHO compiler_flags:%compiler_flags%>> "%fbs_path%%fbs_info_file_name%"
+ECHO linker_flags:%linker_flags%>> "%fbs_path%%fbs_info_file_name%"
 
 REM === Initialize log ===
 (
@@ -228,7 +229,7 @@ REM === Initialize log ===
     ECHO  linker_flags: %linker_flags%
     ECHO ========================================
     ECHO.
-) > "%log_dir%%forgescript_log_file_name%"
+) > "%log_dir%%fbs_log_file_name%"
 
 GOTO :MAIN
 
@@ -292,8 +293,8 @@ ECHO   %~n0%~x0 "build_dir:C:\Users\my_user\Projects\MyProject\build\" output_na
 ECHO.
 ECHO NOTE:
 ECHO   Command line arguments should only be used for flags, or testing/trivial projects.
-ECHO   It is recommended to use the %forgescript_build_conf_file_name% file to configure the script!
-ECHO   fbs_build.conf file location: %forgescript_path%%forgescript_build_conf_file_name%
+ECHO   It is recommended to use the %fbs_config_file_name% file to configure the script!
+ECHO   .conf file location: %fbs_path%%fbs_config_file_name%
 ECHO.
 ECHO Example .conf file (note that quotes are not required, unlike with the cmd line args):
 ECHO compiler:clang++
@@ -325,11 +326,13 @@ ECHO IMPORTANT: configuration settings have precedences: HIGH - command line arg
 ECHO Higher precedence values overwrite lower precedence values!
 ECHO.
 ECHO User does not have to worry about adding -L, -l, /LIBPATH: linker flags with the paths. The script handles it.
+ECHO.
+ECHO Further documentation: https://github.com/tuomok1010/forgescript-build-system
 GOTO :EOF
 
 REM === Clean the build directories ===
 :CLEAN_BUILD
-CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%forgescript_path%%forgescript_build_info_file_name%" PROCESS_CLEAN_KEY_VAL
+CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%fbs_path%%fbs_info_file_name%" PROCESS_CLEAN_KEY_VAL
 
 :: Clean build dir
 IF NOT EXIST "%build_dir%" GOTO :EOF
@@ -372,7 +375,7 @@ GOTO :EOF
 
 REM === Clean the log directory ===
 :CLEAN_LOGS
-CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%forgescript_path%%forgescript_build_info_file_name%" PROCESS_CLEAN_KEY_VAL
+CALL :READ_KEY_VAL_PAIRS_FROM_FILE "%fbs_path%%fbs_info_file_name%" PROCESS_CLEAN_KEY_VAL
 IF NOT EXIST "%log_dir%" GOTO :EOF
 ECHO Cleaning log directory: "%log_dir%"...
 CALL :IS_SUBDIR "%log_dir%" "%~dp0" is_safe
@@ -394,7 +397,7 @@ SET "level=%~1"
 SET "msg=%~2"
 SET "log_line=[%timestamp%] [%level%] %msg%"
 ECHO !log_line!
-ECHO !log_line! >> "%log_dir%%forgescript_log_file_name%"
+ECHO !log_line! >> "%log_dir%%fbs_log_file_name%"
 IF /I "%level%"=="ERROR" (
     EXIT /B 1
 )
@@ -571,9 +574,9 @@ FOR %%F IN (!src_files!) DO (
         CALL :LOG INFO "Compiling: !src!"
 
         IF /I "!compiler!"=="clang-cl" (
-            !compiler! !compiler_flags_parsed! !include_dirs_prefixed! /c "!src!" /Fo"!obj!" 2>> "%log_dir%%forgescript_log_file_name%"
+            !compiler! !compiler_flags_parsed! !include_dirs_prefixed! /c "!src!" /Fo"!obj!" 2>> "%log_dir%%fbs_log_file_name%"
         ) ELSE (
-            !compiler! !compiler_flags_parsed! !include_dirs_prefixed! -c "!src!" -o "!obj!" 2>> "%log_dir%%forgescript_log_file_name%"
+            !compiler! !compiler_flags_parsed! !include_dirs_prefixed! -c "!src!" -o "!obj!" 2>> "%log_dir%%fbs_log_file_name%"
         )
 
         IF ERRORLEVEL 1 (
@@ -596,17 +599,17 @@ IF /I "!compiler!"=="clang-cl" (
         /Fe"%build_dir%%output_name%" ^
 	"%obj_files%" ^
 	/link !linker_flags_parsed! !lib_dirs_prefixed! !libs_prefixed! ^
-	2>> "%log_dir%%forgescript_log_file_name%"
+	2>> "%log_dir%%fbs_log_file_name%"
 ) ELSE (
     !compiler! ^
         -o "%build_dir%%output_name%" ^
 	"%obj_files%" ^
 	!linker_flags_parsed! !lib_dirs_prefixed! !libs_prefixed! ^
-	2>> "%log_dir%%forgescript_log_file_name%"
+	2>> "%log_dir%%fbs_log_file_name%"
 )
 
 IF ERRORLEVEL 1 (
-    CALL :LOG ERROR "Linking failed! See "%log_dir%%forgescript_log_file_name%" for details"
+    CALL :LOG ERROR "Linking failed! See "%log_dir%%fbs_log_file_name%" for details"
     GOTO :EOF
 ) ELSE (
     CALL :LOG SUCCESS "Build succeeded: "%build_dir%%output_name%""
