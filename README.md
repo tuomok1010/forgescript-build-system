@@ -71,14 +71,15 @@ clang++ --version
 ## Quick Start
 
 1. Copy `fbs.build.bat` into your project root folder
-2. Open a terminal in that folder and run:
+2. (Optional) Rename the script to your liking. For example: my_project_debug_build.bat
+3. Open a terminal in that folder and run:
    ```bat
    fbs.build.bat
    ```
-3. The script will create a `forgescript` folder with `[script_name].conf`
-4. Edit `[script_name].conf` to match your project structure (see below)
-5. Add your `.cpp` files to the source directory
-6. Run `fbs.build.bat` again — your project will compile!
+4. The script will create a `forgescript` folder with `[script_name].conf`
+5. Edit `[script_name].conf` to match your project structure (see below)
+6. Add your `.cpp` files to the source directory
+7. Run `fbs.build.bat` again — your project will compile!
 
 Use `--help` anytime for usage info:
 ```bat
