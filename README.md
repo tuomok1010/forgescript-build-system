@@ -1,4 +1,5 @@
 # forgescript-build-system 🛠️
+# DEVELOPMENT ON HOLD FOR NOW
 
 **A lightweight, fully customizable C++ build system written in pure Batch script**  
 Windows-only (for now) • Powered by Clang • Incremental compilation • Simple configuration
